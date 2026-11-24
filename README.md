@@ -10,7 +10,7 @@ All the apps live on nurnhe.github.io, so they share the browser's storage on yo
 
 - **Household Diary:** supplies marked "Running low" and items added to its shopping list. Ticking one off here marks it bought there, so it still learns how long things last. A **Running out soon** card shows supplies due to run out within 5 days, with **Add to list**. Supplies in the Personal care area go under Skin & personal care.
 - **Skin Diary:** the To buy list. Ticking a restock puts the finished product back in use; ticking a new product puts it on your shelf (add it to your routine in Skin Diary).
-- **Meal Planner:** the groceries for the rest of this week (or next week, in Settings), added up and grouped by aisle exactly like Meal Planner's own list. Ticking one ticks it there too.
+- **Meal Planner (off for now):** turn it on in Settings to add the groceries for the rest of this week or next week, added up and grouped by aisle exactly like Meal Planner's own list. Ticking one ticks it there too.
 - **Your own items:** type anything in the box at the top (separate several with commas). The app guesses the group (Groceries, Household, Skin & personal care, Other); tap an item to move it.
 - **Your other apps:** cards at the bottom show chores due today, skincare products to replace and how much of the week is planned, and open each app.
 

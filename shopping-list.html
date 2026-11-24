@@ -374,10 +374,12 @@ const AISLE = { produce: ["Fruit & veg", "Овощи и фрукты"], meat: ["
 const AISLE_ORDER = ["produce", "meat", "dairy", "bakery", "grains", "tins", "nuts", "frozen", "other", "pantry"];
 
 /* ---------- this app's own data ---------- */
-let mine = { items: {}, log: [], settings: { household: true, skin: true, meals: "rest" } };
+let mine = { items: {}, log: [], settings: { household: true, skin: true, meals: "off" } };
 function loadMine() {
   const d = readJSON(KEYS.mine) || {};
-  mine = { items: d.items || {}, log: d.log || [], settings: { household: true, skin: true, meals: "rest", ...(d.settings || {}) } };
+  mine = { items: d.items || {}, log: d.log || [], settings: { household: true, skin: true, meals: "off", ...(d.settings || {}) } };
+  /* One-off (asked 2026-11-24): KK wants Meal Planner groceries off for now. Settings → Meal Planner turns them back on. */
+  try { if (!localStorage.getItem("shopping-list-meals-off")) { localStorage.setItem("shopping-list-meals-off", "1"); mine.settings.meals = "off"; saveMine() } } catch (e) {}
 }
 const saveMine = () => writeJSON(KEYS.mine, mine);
 function logBought(name, group, src) {
