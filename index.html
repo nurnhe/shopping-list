@@ -440,13 +440,13 @@ const AISLE = { produce: ["Fruit & veg", "Овощи и фрукты"], meat: ["
 const AISLE_ORDER = ["produce", "meat", "dairy", "bakery", "grains", "tins", "nuts", "frozen", "other", "pantry"];
 
 /* ---------- this app's own data ---------- */
-let mine = { items: {}, log: [], meta: {}, prices: {}, settings: { household: true, skin: true, meals: "off", currency: "RSD" } };
+let mine = { items: {}, log: [], meta: {}, prices: {}, settings: { household: true, skin: true, meals: "rest", currency: "RSD" } };
 function loadMine() {
   const d = readJSON(KEYS.mine) || {};
-  mine = { items: d.items || {}, log: d.log || [], meta: d.meta || {}, prices: d.prices || {}, settings: { household: true, skin: true, meals: "off", currency: "RSD", ...(d.settings || {}) } };
+  mine = { items: d.items || {}, log: d.log || [], meta: d.meta || {}, prices: d.prices || {}, settings: { household: true, skin: true, meals: "rest", currency: "RSD", ...(d.settings || {}) } };
   mine.log.forEach(x => { x.id ||= uid() });
-  /* One-off (asked 2026-11-24): KK wants Meal Planner groceries off for now. Settings → Meal Planner turns them back on. */
-  try { if (!localStorage.getItem("shopping-list-meals-off")) { localStorage.setItem("shopping-list-meals-off", "1"); mine.settings.meals = "off"; saveMine() } } catch (e) {}
+  /* One-off (asked 2026-11-24): Meal Planner groceries were switched off for a while, then KK wanted them back. Turn them on once. */
+  try { if (!localStorage.getItem("shopping-list-meals-on")) { localStorage.setItem("shopping-list-meals-on", "1"); mine.settings.meals = "rest"; saveMine() } } catch (e) {}
 }
 const saveMine = () => writeJSON(KEYS.mine, mine);
 /* Prices: each item can carry a quantity and a price each (mine.meta, by list item). The last price paid for a name is
