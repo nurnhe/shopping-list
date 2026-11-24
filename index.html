@@ -84,6 +84,10 @@ a.btn { text-decoration: none; color: var(--ink); display: inline-flex; align-it
 /* Add bar */
 .add { display: flex; gap: 8px; padding: 8px; align-items: center }
 .add input { flex: 1; min-width: 0; border: 0; background: none; padding: 8px 10px; font-size: 16px; outline: none }
+.add { flex-wrap: wrap }
+.add-cats { flex-basis: 100%; display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 4px 4px }
+.add-cats[hidden] { display: none }
+.add-cats .chip { padding: 5px 11px; font-size: 13px }
 .add .guess { font-size: 12.5px; font-weight: 600; color: var(--muted); white-space: nowrap; display: flex; align-items: center; gap: 6px }
 .add .guess:empty { display: none }
 
@@ -141,6 +145,13 @@ a.btn { text-decoration: none; color: var(--ink); display: inline-flex; align-it
 .basket .items { margin-top: 6px }
 .basket .item { grid-template-columns: minmax(0, 1fr) auto }
 
+.suggest { list-style: none; margin: -10px 0 0; padding: 6px; display: grid; gap: 2px; position: relative; z-index: 5 }
+.suggest[hidden] { display: none }
+.suggest button { width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 0; background: none; border-radius: 10px; padding: 10px; text-align: left; font-weight: 600 }
+.suggest button .dot { --c: var(--g-other) }
+.suggest button .meta { font-size: 12.5px; color: var(--muted); font-weight: 500 }
+.suggest button:hover, .suggest button[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 10%, transparent) }
+.suggest b { color: var(--accent) }
 .views { display: flex; gap: 4px; padding: 4px; background: color-mix(in srgb, var(--ink) 6%, transparent); border-radius: 12px; width: max-content }
 .views button { border: 0; background: none; border-radius: 9px; padding: 7px 18px; font-weight: 700; color: var(--muted) }
 .views button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow) }
@@ -227,9 +238,10 @@ a.btn { text-decoration: none; color: var(--ink); display: inline-flex; align-it
   </nav>
   <form class="add card" data-form="add" autocomplete="off">
     <input id="addInput" placeholder="Add something to buy…" aria-label="Add something to buy" enterkeyhint="done">
-    <span class="guess" id="guess"></span>
     <button class="btn primary">Add</button>
+    <div class="add-cats" id="addCats" role="group" aria-label="Category" hidden></div>
   </form>
+  <ul class="suggest card" id="suggest" role="listbox" hidden></ul>
   <main id="main" style="display:grid;gap:14px"></main>
 </div>
 <div id="sheetRoot"></div>
@@ -456,15 +468,51 @@ function logBought(item) {
   delete mine.meta[item.id];
 }
 
+/* ---------- suggestions while typing ----------
+   From what you've bought or listed before (most used first), what the other apps know, and a built-in list of
+   everyday products from Serbian shops with common sizes. Everything runs on the phone; nothing is sent anywhere. */
+const CATALOGUE = {"g": ["Coca-Cola 0.5 l", "Coca-Cola 1.5 l", "Coca-Cola 2 l", "Coca-Cola Zero 0.5 l", "Coca-Cola Zero 1.5 l", "Coca-Cola Zero 2 l", "Coca-Cola Zero cans 6 × 0.33 l", "Coca-Cola cans 6 × 0.33 l", "Pepsi 1.5 l", "Pepsi Max 1.5 l", "Fanta Orange 1.5 l", "Fanta Zero 1.5 l", "Sprite 1.5 l", "Schweppes Bitter Lemon 1.5 l", "Schweppes Tonic 1.5 l", "Cockta 1.5 l", "Guarana 0.5 l", "Red Bull 0.25 l", "Knjaz Miloš 1.5 l", "Knjaz Miloš 6 × 1.5 l", "Rosa still water 1.5 l", "Rosa still water 6 × 1.5 l", "Aqua Viva 1.5 l", "Jana water 1.5 l", "Prolom water 1.5 l", "Next orange juice 1 l", "Next apple juice 1 l", "Nectar orange juice 1 l", "Nectar Life juice 1.5 l", "Ice tea peach 1.5 l", "Jelen beer 0.5 l", "Lav beer 0.5 l", "Heineken 0.5 l", "Wine, red", "Wine, white", "Imlek milk 2.8% 1 l", "Imlek milk 1.5% 1 l", "Lactose-free milk 1 l", "Oat milk 1 l", "Almond milk 1 l", "Moja Kravica yogurt 1 l", "Imlek yogurt 1 l", "Kiselo mleko", "Greek yogurt", "Kefir", "Sour cream (pavlaka)", "Kajmak", "Mladi sir (young cheese)", "Cottage cheese (posni sir)", "Feta cheese", "Gouda cheese", "Edam cheese", "Trapist cheese", "Mozzarella 125 g", "Parmesan", "Cream cheese", "Butter 250 g", "Margarine", "Whipping cream", "Eggs 10", "Eggs 30", "Bread, white", "Bread, wholegrain", "Bread, rye", "Toast bread", "Lepinja", "Kifle", "Burek", "Tortilla wraps", "Pita dough (kore)", "Rolls", "Croissants", "Bananas", "Apples", "Oranges", "Mandarins", "Lemons", "Limes", "Grapes", "Pears", "Strawberries", "Blueberries", "Raspberries", "Watermelon", "Avocado", "Kiwi", "Pomegranate", "Tomatoes", "Cherry tomatoes", "Cucumbers", "Potatoes", "Sweet potatoes", "Onions", "Red onions", "Garlic", "Carrots", "Peppers", "Zucchini", "Eggplant", "Broccoli", "Cauliflower", "Cabbage", "Lettuce", "Spinach", "Rocket", "Mushrooms", "Parsley", "Dill", "Basil", "Spring onions", "Ginger", "Corn", "Chicken breast", "Chicken thighs", "Whole chicken", "Turkey breast", "Minced beef", "Minced pork", "Mixed mince", "Pork chops", "Pork neck", "Beef steak", "Ćevapi", "Pljeskavica", "Sausages", "Kobasica", "Pršuta", "Šunka (ham)", "Salami", "Bacon", "Tuna can", "Sardines can", "Salmon fillet", "Hake fillet", "Trout", "Shrimp", "Pasta, spaghetti 500 g", "Pasta, penne 500 g", "Pasta, fusilli 500 g", "Lasagne sheets", "Rice 1 kg", "Basmati rice 1 kg", "Risotto rice", "Oats 500 g", "Muesli", "Cornflakes", "Granola", "Flour T-400 1 kg", "Flour T-500 1 kg", "Corn flour (palenta)", "Couscous", "Bulgur", "Lentils", "Chickpeas can", "Beans can", "Sugar 1 kg", "Brown sugar", "Salt", "Black pepper", "Paprika (aleva paprika)", "Vegeta", "Oregano", "Cinnamon", "Baking powder", "Vanilla sugar", "Yeast", "Sunflower oil 1 l", "Olive oil 1 l", "Vinegar", "Balsamic vinegar", "Ketchup", "Mayonnaise", "Mustard", "Ajvar", "Pindjur", "Tomato passata", "Chopped tomatoes can", "Tomato paste", "Soy sauce", "Pesto", "Honey", "Jam", "Plazma spread", "Eurocrem", "Nutella", "Peanut butter", "Tahini", "Hummus", "Grand kafa 200 g", "Grand kafa 500 g", "Doncafe 200 g", "Nescafé Classic", "Nescafé 3in1", "Espresso beans 1 kg", "Coffee capsules", "Tea, black", "Tea, green", "Tea, chamomile", "Cocoa", "Plazma biscuits 300 g", "Smoki 150 g", "Chips", "Pringles", "Popcorn", "Pretzels", "Najlepše želje chocolate", "Milka chocolate", "Dark chocolate", "Kinder chocolate", "Bananica", "Jaffa cakes", "Wafers", "Ice cream", "Nuts mix", "Almonds", "Walnuts", "Peanuts", "Raisins", "Frozen peas", "Frozen vegetables", "Frozen spinach", "Frozen berries", "Frozen pizza", "Frozen chips (pomfrit)", "Frozen fish fingers", "Ice cubes"], "h": ["Toilet paper 10 rolls", "Toilet paper 24 rolls", "Paper towels 2 rolls", "Tissues", "Napkins", "Ariel washing powder", "Ariel liquid detergent", "Persil liquid detergent", "Persil capsules", "Merix washing powder", "Lenor fabric softener", "Silan fabric softener", "Vanish stain remover", "Fairy dish soap", "Pur dish soap", "Finish dishwasher tablets", "Finish rinse aid", "Finish dishwasher salt", "Domestos", "Cif cream cleaner", "Mr. Muscle glass cleaner", "Bathroom cleaner", "Floor cleaner", "Descaler", "Bleach (varikina)", "Sponges", "Steel scrubbers", "Microfibre cloths", "Rubber gloves", "Bin bags 35 l", "Bin bags 60 l", "Freezer bags", "Cling film", "Aluminium foil", "Baking paper", "Light bulbs E27", "Light bulbs E14", "Batteries AA", "Batteries AAA", "Air freshener", "Candles", "Matches", "Hand soap", "Hand soap refill"], "c": ["Colgate toothpaste", "Sensodyne toothpaste", "Toothbrush", "Dental floss", "Mouthwash", "Shampoo", "Conditioner", "Hair mask", "Shower gel", "Body lotion", "Hand cream", "Deodorant", "Nivea Creme", "Nivea lip balm", "Micellar water", "Cotton pads", "Cotton buds", "Razors", "Shaving foam", "Sunscreen SPF 50", "Face cream", "Face cleanser", "Sheet masks", "Nail polish remover", "Pads", "Tampons", "Plasters", "Paracetamol", "Ibuprofen", "Vitamin C", "Vitamin D"]};
+const CAT_GROUP = { g: "groceries", h: "household", c: "care" };
+const fold = s => String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "dj").replace(/[-–.,()×]/g, " ").replace(/\s+/g, " ").trim();
+function suggestPool() {
+  const pool = new Map(), add = (name, group, score) => { const k = pkey(name); const x = pool.get(k); if (x) x.score += score; else pool.set(k, { name, group, score }) };
+  for (const x of mine.log) add(x.name, x.group, 3);
+  for (const x of Object.values(mine.items)) add(x.name, x.group, 2);
+  const hd = householdData(); if (hd) for (const s of Object.values(hd.supplies)) add(s.name, HOUSE_CARE_AREAS.has(s.area) ? "care" : "household", 1);
+  const sd = skinData(); if (sd) for (const p of [...(sd.template.products || []), ...(sd.template.toBuy || [])]) if (!p.oneOff && p.step !== 9) add([p.brand, p.name].filter(Boolean).join(" "), "care", 1);
+  for (const [c, list] of Object.entries(CATALOGUE)) for (const n of list) add(n, CAT_GROUP[c], 0);
+  return [...pool.values()];
+}
+function suggest(q) {
+  const f = fold(q); if (f.length < 2) return [];
+  const words = f.split(" ");
+  return suggestPool().map(x => {
+    const n = fold(x.name); if (n === f) return null;
+    const ws = n.split(" ");
+    if (!words.every(w => ws.some(v => v.startsWith(w)) || n.includes(w))) return null;
+    const rank = (n.startsWith(f) ? 0 : ws.some(v => v.startsWith(words[0])) ? 1 : 2) - Math.min(x.score, 30) / 10;
+    return { ...x, rank };
+  }).filter(Boolean).sort((a, b) => a.rank - b.rank || a.name.length - b.name.length).slice(0, 6);
+}
+
 /* ---------- which group something belongs in ---------- */
 const GROUPS = { groceries: "Groceries", household: "Household", care: "Skin & personal care", other: "Other" };
 const GROUP_ORDER = ["household", "care", "groceries", "other"];
 const CARE_RE = /serum|cream|crème|spf|sunscreen|sun screen|cleanser|toner|essence|moistur|retinol|retinal|niacinamide|acid|mask|balm|lip|shampoo|conditioner|hair|tooth|floss|mouthwash|deodorant|razor|shav|cotton pad|cotton bud|q-tip|make ?up|mascara|micellar|body lotion|lotion|shower gel|body wash|hand cream|perfume|nail|tampon|pad|sanitary|сыворот|крем|шампун|бальзам|маск|тоник|зубн|дезодор/i;
 const HOME_RE = /detergent|washing|laundry|softener|bleach|cleaner|spray|wipes|sponge|scrub|cloth|dish ?soap|washing.up|dishwasher|rinse aid|salt tablets|bin bag|trash bag|garbage bag|bags|foil|cling|baking paper|parchment|paper towel|kitchen roll|toilet paper|toilet roll|tissues|napkin|bulb|batter|filter|candle|hand soap|soap|air freshener|descaler|gloves|mop|broom|vacuum|порош|моющ|губк|салфет|пакет|туалетн|бумаг|лампоч|батаре|фильтр|мыло/i;
+/* Serbian and extra words, matched against the name without accents (fold). */
+const FOOD_RE = /(^| )(hleb|mlek|kafa|kafe|caj|sir|jaja|jaje|meso|piletin|pilec|junet|svinj|riba|voce|povrc|jogurt|pavlak|maslac|pivo|vino|voda|vode|sok|cokolad|keks|brasn|secer|ulje|pirinac|testenin|kobasic|sunka|banan|jabuk|krompir|luk|paradajz|krastav|paprik|kupus|sargarep|limun|pomorandz|grozdj|jagod|pasulj|grasak|kukuruz|med|dzem|ajvar|kecap|majonez|senf|so|biber|zacin|cips|grickalic|sladoled|kroasan|kifl|burek|pecivo|torta|kolac|drink|soda|juice|cola|coke|beer|wine|water|coffee|tea|snack|candy|chocolate|cookie|biscuit|cake|cereal|pizza|sandwich)/;
+const HOME_SR = /(^| )(deterdz|omeksiv|prasak|sundj|krp|kese|kesa|toalet|salvet|ubrus|varikin|sredstvo za|tablete za sudo|so za sudo|sijalic|baterij|osvezivac|rukavic|folij|papir za pecenje|djubr|smece)/;
+const CARE_SR = /(^| )(sampon|regenerator|pasta za zube|cetkica|krema|krem|dezodorans|losion|gel za tusir|uloz|tampon|brijac|vatice|stapic|lak za nokte|serum|maska|parfem|lek|vitamin|flaster|ruz|puder|maskar)/;
+/* Best guess for a typed name: what it was filed under before, then the built-in product list, then keywords. */
 function guessGroup(name) {
-  if (CARE_RE.test(name)) return "care";
-  if (HOME_RE.test(name)) return "household";
-  if (sectionOf(name) !== "other") return "groceries";
+  const k = pkey(name), seen = mine.log.find(x => pkey(x.name) === k) || Object.values(mine.items).find(x => pkey(x.name) === k);
+  if (seen?.group) return seen.group;
+  const f = fold(name);
+  if (f.length >= 3) for (const [c, list] of Object.entries(CATALOGUE)) if (list.some(n => { const m = fold(n); return m.startsWith(f) || f.startsWith(m) || m.split(" ")[0].length > 3 && f.split(" ")[0] === m.split(" ")[0] })) return CAT_GROUP[c];
+  if (CARE_RE.test(name) || CARE_SR.test(f)) return "care";
+  if (HOME_RE.test(name) || HOME_SR.test(f)) return "household";
+  if (sectionOf(name) !== "other" || FOOD_RE.test(f)) return "groceries";
   return "other";
 }
 
@@ -588,7 +636,8 @@ function skinBought(id) {
 
 /* Things typed here: food goes to this list, household and care items too, each in its group. */
 function addMine(name, group) {
-  const id = uid(); mine.items[id] = { id, name, group: group || guessGroup(name), added: Date.now() }; saveMine();
+  const known = !group && [...mine.log].find(x => pkey(x.name) === pkey(name));
+  const id = uid(); mine.items[id] = { id, name, group: group || known?.group || guessGroup(name), added: Date.now() }; saveMine();
   render(); toast(`Added ${name} to ${GROUPS[mine.items[id].group]}.`, () => { delete mine.items[id]; saveMine(); render() });
 }
 
@@ -835,6 +884,8 @@ document.addEventListener("click", e => {
   else if (act === "settings") openSheet({ type: "settings" });
   else if (act === "meals") { mine.settings.meals = el.dataset.v; saveMine(); render(); renderSheet() }
   else if (act === "close") closeSheet();
+  else if (act === "pick") pickSuggest(+el.dataset.i);
+  else if (act === "add-cat") { addGroup = el.dataset.g; showCats(); input.focus() }
   else if (act === "view") { view = el.dataset.v; closeSheet(); render(); scrollTo(0, 0) }
   else if (act === "month") { monthOff = Math.min(0, monthOff + +el.dataset.d); spendGroup = null; render() }
   else if (act === "spend-group") { spendGroup = spendGroup === el.dataset.g ? null : el.dataset.g; render() }
@@ -875,11 +926,43 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && sheet) closeSheet() });
 const input = $("#addInput");
-input.addEventListener("input", () => { const v = input.value.trim(); $("#guess").innerHTML = v ? `<span class="dot" style="--c:var(--g-${guessGroup(v)})"></span>${GROUPS[guessGroup(v)]}` : "" });
+let sugg = [], suggAt = -1;
+function showSuggest() {
+  const v = input.value.trim(), last = v.split(/\s*[,;]\s*/).pop(), box = $("#suggest");
+  sugg = document.activeElement === input ? suggest(last) : []; suggAt = -1;
+  box.hidden = !sugg.length;
+  const hl = n => { const f = fold(last).split(" ").filter(Boolean); return esc(n).split(" ").map(w => f.some(x => fold(w).startsWith(x)) ? `<b>${w}</b>` : w).join(" ") };
+  box.innerHTML = sugg.map((x, i) => { const pr = mine.prices[pkey(x.name)]; return `<li><button type="button" role="option" data-act="pick" data-i="${i}"><span class="dot" style="--c:var(--g-${x.group})"></span><span>${hl(x.name)}</span><span class="meta">${pr != null ? money(pr) : x.score >= 3 ? "bought before" : ""}</span></button></li>` }).join("");
+}
+function pickSuggest(i) {
+  const x = sugg[i]; if (!x) return;
+  const parts = input.value.split(/\s*[,;]\s*/); parts.pop();
+  parts.filter(Boolean).forEach(n => addMine(cap(n.trim()), addGroup || undefined));
+  addMine(x.name, addGroup || x.group);
+  input.value = ""; addGroup = null; showCats(); showSuggest(); input.focus();
+}
+/* Category for what's being added: guessed as you type, or picked by tapping a chip (the pick sticks until it's added). */
+let addGroup = null;
+function showCats() {
+  const v = input.value.trim(), box = $("#addCats"); box.hidden = !v;
+  if (!v) { addGroup = null; return }
+  const g = addGroup || guessGroup(v.split(/\s*[,;]\s*/).pop() || v);
+  box.innerHTML = GROUP_ORDER.map(k => `<button type="button" class="chip" style="--c:var(--g-${k})" data-act="add-cat" data-g="${k}" aria-pressed="${g === k}"><span class="dot"></span>${GROUPS[k]}</button>`).join("");
+}
+input.addEventListener("input", () => { showCats(); showSuggest() });
+input.addEventListener("focus", showSuggest);
+input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input) $("#suggest").hidden = true }, 150));
+input.addEventListener("keydown", e => {
+  if (!sugg.length) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = sugg.length + 1; suggAt = ((suggAt + 1 + (e.key === "ArrowDown" ? 1 : -1)) % n + n) % n - 1; $("#suggest").querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-selected", i === suggAt)) }
+  else if (e.key === "Enter" && suggAt >= 0) { e.preventDefault(); pickSuggest(suggAt) }
+  else if (e.key === "Escape") $("#suggest").hidden = true;
+});
+$("#suggest").addEventListener("pointerdown", e => e.preventDefault());
 document.querySelector("[data-form=add]").addEventListener("submit", e => {
   e.preventDefault(); const v = input.value.trim(); if (!v) return;
-  v.split(/\s*[,;\n]\s*/).filter(Boolean).forEach(n => addMine(cap(n)));
-  input.value = ""; $("#guess").innerHTML = "";
+  v.split(/\s*[,;\n]\s*/).filter(Boolean).forEach(n => addMine(cap(n), addGroup || undefined));
+  input.value = ""; addGroup = null; showCats(); showSuggest();
 });
 /* Stay in step with the other apps: re-read when one of them saves (another tab) or when coming back to this app. */
 addEventListener("storage", e => { if (e.key === THEME_KEY) applyTheme(); else if (Object.values(KEYS).includes(e.key)) { if (e.key === KEYS.mine) loadMine(); render(); if (sheet) renderSheet() } });
