@@ -141,6 +141,38 @@ a.btn { text-decoration: none; color: var(--ink); display: inline-flex; align-it
 .basket .items { margin-top: 6px }
 .basket .item { grid-template-columns: minmax(0, 1fr) auto }
 
+.views { display: flex; gap: 4px; padding: 4px; background: color-mix(in srgb, var(--ink) 6%, transparent); border-radius: 12px; width: max-content }
+.views button { border: 0; background: none; border-radius: 9px; padding: 7px 18px; font-weight: 700; color: var(--muted) }
+.views button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow) }
+.item .amt .price { display: block; color: var(--ink) }
+.item .amt .price.guess::before { content: "≈ "; color: var(--muted) }
+.item .amt .qty { display: block; font-weight: 600 }
+.qp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+.stepper { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 6px }
+.stepper button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; font-size: 18px; font-weight: 700; color: var(--ink) }
+.stepper .input { text-align: center; padding-inline: 4px }
+.total-line { margin: 0; font-weight: 700; font-size: 16px }
+.total-line span { color: var(--muted); font-weight: 500 }
+.spend-head { padding: 18px; display: grid; gap: 14px }
+.month { display: flex; align-items: center; justify-content: space-between; gap: 8px }
+.month h2 { font-size: 20px }
+.big { font-family: var(--head); font-size: clamp(36px, 9vw, 48px); font-weight: 650; letter-spacing: -.03em; line-height: 1 }
+.big small { font-size: .42em; font-weight: 600; color: var(--muted); letter-spacing: 0; margin-left: 4px }
+.bars { display: grid; gap: 12px }
+.bar { --c: var(--g-other); display: grid; gap: 5px; border: 0; background: none; padding: 0; text-align: left; width: 100% }
+.bar .lbl { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 14.5px }
+.bar .lbl span:last-child { font-variant-numeric: tabular-nums }
+.bar .lbl .pct { color: var(--muted); font-weight: 500; margin-left: 6px }
+.bar .track { height: 10px; border-radius: 99px; background: color-mix(in srgb, var(--c) 14%, var(--surface-2)); overflow: hidden }
+.bar .fill { height: 100%; border-radius: 99px; background: var(--c); min-width: 4px }
+.bar[aria-pressed="true"] .lbl { color: var(--c) }
+.pays { padding: 12px 10px 6px 14px }
+.pays .day { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 12px 4px 2px; border-top: 1px solid var(--line) }
+.pays .items > .day:first-child { border-top: 0; padding-top: 2px }
+.pays .item { grid-template-columns: 12px minmax(0, 1fr) auto }
+.pays .items > .day + .item { border-top: 0 }
+.pays .item .dot { --c: var(--g-other) }
+.nopay { color: var(--warn) }
 .empty { padding: 28px 22px; text-align: center; display: grid; gap: 10px; justify-items: center }
 .empty h2 { font-size: 22px }
 .empty p { margin: 0; max-width: 52ch }
@@ -189,6 +221,10 @@ a.btn { text-decoration: none; color: var(--ink); display: inline-flex; align-it
       <button class="icon-btn" data-act="theme" id="themeBtn"></button>
     </div>
   </header>
+  <nav class="views" role="tablist" aria-label="View">
+    <button role="tab" data-act="view" data-v="list" aria-selected="true">List</button>
+    <button role="tab" data-act="view" data-v="spend" aria-selected="false">Spending</button>
+  </nav>
   <form class="add card" data-form="add" autocomplete="off">
     <input id="addInput" placeholder="Add something to buy…" aria-label="Add something to buy" enterkeyhint="done">
     <span class="guess" id="guess"></span>
@@ -392,16 +428,32 @@ const AISLE = { produce: ["Fruit & veg", "Овощи и фрукты"], meat: ["
 const AISLE_ORDER = ["produce", "meat", "dairy", "bakery", "grains", "tins", "nuts", "frozen", "other", "pantry"];
 
 /* ---------- this app's own data ---------- */
-let mine = { items: {}, log: [], settings: { household: true, skin: true, meals: "off" } };
+let mine = { items: {}, log: [], meta: {}, prices: {}, settings: { household: true, skin: true, meals: "off", currency: "RSD" } };
 function loadMine() {
   const d = readJSON(KEYS.mine) || {};
-  mine = { items: d.items || {}, log: d.log || [], settings: { household: true, skin: true, meals: "off", ...(d.settings || {}) } };
+  mine = { items: d.items || {}, log: d.log || [], meta: d.meta || {}, prices: d.prices || {}, settings: { household: true, skin: true, meals: "off", currency: "RSD", ...(d.settings || {}) } };
+  mine.log.forEach(x => { x.id ||= uid() });
   /* One-off (asked 2026-11-24): KK wants Meal Planner groceries off for now. Settings → Meal Planner turns them back on. */
   try { if (!localStorage.getItem("shopping-list-meals-off")) { localStorage.setItem("shopping-list-meals-off", "1"); mine.settings.meals = "off"; saveMine() } } catch (e) {}
 }
 const saveMine = () => writeJSON(KEYS.mine, mine);
-function logBought(name, group, src) {
-  mine.log = [{ name, group, src, on: todayKey(), at: Date.now() }, ...mine.log.filter(x => daysAgo(x.on) < 14)].slice(0, 80);
+/* Prices: each item can carry a quantity and a price each (mine.meta, by list item). The last price paid for a name is
+   remembered (mine.prices) and suggested next time. Every purchase goes into mine.log, which the Spending view totals. */
+const num = v => { const n = parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) && n >= 0 ? n : null };
+const pkey = n => String(n).trim().toLowerCase();
+const r2 = v => Math.round(v * 100) / 100;
+function metaOf(i) {
+  const m = mine.meta[i.id] || {}, qty = m.qty ?? 1, last = mine.prices[pkey(i.name)], price = m.price ?? last ?? null;
+  return { qty, price, total: price == null ? null : r2(price * qty), guessed: m.price == null && price != null };
+}
+const fmtN = v => new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 }).format(v);
+const money = v => v == null ? "" : new Intl.NumberFormat("en-GB", { minimumFractionDigits: r2(v) % 1 ? 2 : 0, maximumFractionDigits: 2 }).format(r2(v)) + " " + (mine.settings.currency || "");
+const sum = list => r2(list.reduce((a, x) => a + (x.total || 0), 0));
+function logBought(item) {
+  const m = metaOf(item);
+  mine.log = [{ id: uid(), name: item.name, group: item.group, src: item.src, on: todayKey(), at: Date.now(), qty: m.qty, price: m.price, total: m.total }, ...mine.log].slice(0, 3000);
+  if (m.price != null) mine.prices[pkey(item.name)] = m.price;
+  delete mine.meta[item.id];
 }
 
 /* ---------- which group something belongs in ---------- */
@@ -503,7 +555,7 @@ function tickItem(id) {
     writeJSON(KEYS.meals, d);
   }
   else if (kind === "o") delete mine.items[ref];
-  logBought(item.name, item.group, item.src); saveMine();
+  logBought(item); saveMine();
   render(); toast(msg, undo);
 }
 /* Same as Household Diary's "bought": it learns how long a supply really lasts from when it was bought to when it ran low. */
@@ -569,12 +621,16 @@ const ICON = {
 const ic = (k, cls = "") => `<svg viewBox="0 0 24 24" class="${cls}" aria-hidden="true">${ICON[k]}</svg>`;
 
 /* ---------- rendering ---------- */
-let filter = "all", sheet = null;
+let filter = "all", sheet = null, view = "list", monthOff = 0, spendGroup = null;
 const $ = s => document.querySelector(s);
 function render() {
+  document.querySelectorAll(".views button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === view));
+  $("[data-form=add]").hidden = view !== "list";
+  if (view === "spend") { renderSpend(); return }
   const g = gather(), items = g.items, counts = Object.fromEntries(GROUP_ORDER.map(k => [k, items.filter(i => i.group === k).length]));
   const boughtToday = mine.log.filter(x => x.on === todayKey());
-  $("#summary").innerHTML = items.length ? `<b>${items.length}</b> to buy${boughtToday.length ? ` · ${boughtToday.length} in the basket today` : ""}` : boughtToday.length ? `All done · ${boughtToday.length} bought today` : "Nothing to buy right now";
+  const est = sum(items.map(metaOf));
+  $("#summary").innerHTML = items.length ? `<b>${items.length}</b> to buy${est ? ` · about <b>${money(est)}</b>` : ""}${boughtToday.length ? ` · ${boughtToday.length} in the basket today` : ""}` : boughtToday.length ? `All done · ${boughtToday.length} bought today` : "Nothing to buy right now";
   if (filter !== "all" && !counts[filter]) filter = "all";
   const chips = items.length ? `<div class="chips" role="group" aria-label="Show">
     <button class="chip" data-act="filter" data-f="all" aria-pressed="${filter === "all"}">All <span class="n">${items.length}</span></button>
@@ -593,7 +649,8 @@ function groupCard(k, list) {
     /* Groceries are split by aisle, like Meal Planner's own list. */
     body = AISLE_ORDER.map(a => { const its = list.filter(i => (i.aisle || "other") === a); return its.length ? `<li class="aisle${a === "pantry" ? " pantry" : ""}">${esc(AISLE[a][L()])}</li>${its.map(itemRow).join("")}` : "" }).join("");
   } else body = list.map(itemRow).join("");
-  return `<section class="card group" style="--c:var(--g-${k})"><div class="group-head"><h2>${GROUPS[k]}</h2><span class="count">${list.length}</span></div>
+  const t = sum(list.map(metaOf));
+  return `<section class="card group" style="--c:var(--g-${k})"><div class="group-head"><h2>${GROUPS[k]}</h2><span class="count">${t ? `≈ ${money(t)} · ` : ""}${list.length}</span></div>
     <ul class="items">${body}</ul></section>`;
 }
 function itemRow(i) {
@@ -601,7 +658,11 @@ function itemRow(i) {
   const from = i.src === "mine" || i.src === "meals" ? "" : `<span class="tag" style="--t:var(--g-${i.group})">${esc(SRC_LABEL[i.src])}</span>`;
   return `<li class="item"><input type="checkbox" class="check" data-act="tick" data-id="${esc(i.id)}" aria-label="Bought ${esc(i.name)}">
     <button class="body" data-act="open" data-id="${esc(i.id)}"><span class="nm">${esc(i.name)}</span>${tags || from ? `<span class="sub">${tags}${tags && from ? `<span aria-hidden="true">·</span>` : ""}${from}</span>` : ""}</button>
-    <span class="amt">${esc(i.amount || "")}</span></li>`;
+    <span class="amt">${amtCell(i)}</span></li>`;
+}
+function amtCell(i) {
+  const m = metaOf(i);
+  return `${i.amount ? `<span class="qty">${esc(i.amount)}</span>` : ""}${m.qty !== 1 ? `<span class="qty">× ${fmtN(m.qty)}</span>` : ""}${m.total != null ? `<span class="price${m.guessed ? " guess" : ""}">${money(m.total)}</span>` : ""}`;
 }
 function soonCard(soon) {
   if (!soon.length) return "";
@@ -611,9 +672,41 @@ function soonCard(soon) {
 }
 function basketCard(list) {
   if (!list.length) return "";
-  return `<details class="card basket"><summary><h2>In the basket today</h2><span class="count muted">${list.length}</span></summary>
-    <ul class="items">${list.map(x => `<li class="item done"><span class="body"><span class="nm">${esc(x.name)}</span></span><span class="amt">${esc(GROUPS[x.group] || "")}</span></li>`).join("")}</ul></details>`;
+  const t = sum(list);
+  return `<details class="card basket"><summary><h2>In the basket today</h2><span class="count muted">${t ? money(t) + " · " : ""}${list.length}</span></summary>
+    <ul class="items">${list.map(x => `<li class="item done"><button class="body" data-act="pay" data-id="${esc(x.id || "")}"><span class="nm">${esc(x.name)}</span><span class="sub">${esc(GROUPS[x.group] || "")}${x.qty && x.qty !== 1 ? ` · × ${fmtN(x.qty)}` : ""}</span></button><span class="amt">${x.total != null ? `<span class="price">${money(x.total)}</span>` : `<button class="btn small ghost" data-act="pay" data-id="${esc(x.id || "")}">Add price</button>`}</span></li>`).join("")}</ul></details>`;
 }
+/* ---------- spending ---------- */
+const monthKey = off => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + off); return keyOf(d).slice(0, 7) };
+const monthLabel = ym => fromKey(ym + "-01").toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+function renderSpend() {
+  const ym = monthKey(monthOff), all = mine.log.filter(x => x.on.startsWith(ym)), total = sum(all), prev = sum(mine.log.filter(x => x.on.startsWith(monthKey(monthOff - 1))));
+  const noPrice = all.filter(x => x.total == null).length;
+  $("#summary").innerHTML = total ? `<b>${money(total)}</b> spent in ${monthLabel(ym).split(" ")[0]}` : `Nothing spent in ${monthLabel(ym).split(" ")[0]} yet`;
+  const byG = GROUP_ORDER.map(k => [k, sum(all.filter(x => x.group === k)), all.filter(x => x.group === k).length]).filter(([, , n]) => n).sort((a, b) => b[1] - a[1]);
+  if (spendGroup && !byG.some(([k]) => k === spendGroup)) spendGroup = null;
+  const max = Math.max(...byG.map(([, v]) => v), 1);
+  const bars = byG.map(([k, v, n]) => `<button class="bar" style="--c:var(--g-${k})" data-act="spend-group" data-g="${k}" aria-pressed="${spendGroup === k}">
+      <span class="lbl"><span>${GROUPS[k]} <span class="pct">${n} item${n === 1 ? "" : "s"}${total ? ` · ${Math.round(v / total * 100)}%` : ""}</span></span><span>${money(v)}</span></span>
+      <span class="track"><span class="fill" style="width:${v / max * 100}%"></span></span></button>`).join("");
+  const vs = prev && monthOff <= 0 ? `<span class="muted" style="font-size:13.5px">${monthLabel(monthKey(monthOff - 1)).split(" ")[0]}: ${money(prev)}</span>` : "";
+  const shown = spendGroup ? all.filter(x => x.group === spendGroup) : all, days = [...new Set(shown.map(x => x.on))].sort().reverse();
+  const dayLabel = k => k === todayKey() ? "Today" : daysAgo(k) === 1 ? "Yesterday" : fromKey(k).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const rows = days.map(k => { const its = shown.filter(x => x.on === k); return `<li class="day">${dayLabel(k)} · ${money(sum(its)) || "no prices"}</li>` + its.map(x => `<li class="item">
+      <span class="dot" style="--c:var(--g-${x.group})"></span>
+      <button class="body" data-act="pay" data-id="${esc(x.id)}"><span class="nm">${esc(x.name)}</span><span class="sub">${esc(GROUPS[x.group] || "")}${x.qty && x.qty !== 1 ? ` · ${fmtN(x.qty)} × ${money(x.price)}` : ""}</span></button>
+      <span class="amt">${x.total != null ? `<span class="price">${money(x.total)}</span>` : `<button class="btn small" data-act="pay" data-id="${esc(x.id)}">Add price</button>`}</span></li>`).join("") }).join("");
+  $("#main").innerHTML = `<section class="card spend-head">
+      <div class="month"><button class="icon-btn" data-act="month" data-d="-1" aria-label="Previous month">‹</button><h2>${monthLabel(ym)}</h2><button class="icon-btn" data-act="month" data-d="1" aria-label="Next month"${monthOff >= 0 ? " disabled style=\"opacity:.35\"" : ""}>›</button></div>
+      <div><div class="big">${money(total).replace(" " + (mine.settings.currency || ""), "").trim()}<small>${esc(mine.settings.currency || "")}</small></div>${vs}</div>
+      ${noPrice ? `<span class="nopay" style="font-size:13.5px;font-weight:600">${noPrice} purchase${noPrice === 1 ? " has" : "s have"} no price yet. Tap one below to add it.</span>` : ""}
+      ${bars ? `<div class="bars">${bars}</div>` : `<p class="muted" style="margin:0">When you tick something off the list, it's added here with its price.</p>`}
+    </section>
+    <section class="card pays"><div class="group-head"><h2>${spendGroup ? GROUPS[spendGroup] : "Purchases"}</h2><button class="btn small" data-act="new-pay">Add a purchase</button></div>
+      ${rows ? `<ul class="items">${rows}</ul>` : `<p class="muted" style="margin:4px 4px 10px">Nothing yet this month.</p>`}</section>
+    <p class="note">Prices are saved on this phone only. Set the currency in Settings.</p>`;
+}
+
 function appsStrip(g) {
   const cards = [];
   if (g.hd) {
@@ -645,10 +738,21 @@ function renderSheet() {
     const open = i.src !== "mine" ? `<a class="btn" href="${APP_URL[i.src]}">Open ${SRC_LABEL[i.src]}</a>` : "";
     const move = i.src === "mine" ? `<label class="f">Group<div class="seg">${GROUP_ORDER.map(k => `<button class="chip" style="--c:var(--g-${k})" data-act="move" data-id="${esc(i.id)}" data-g="${k}" aria-pressed="${i.group === k}"><span class="dot"></span>${GROUPS[k]}</button>`).join("")}</div></label>` : "";
     const removeLabel = { household: "Not running low", skin: "Take off To buy", meals: "Don't need it", mine: "Remove" }[i.src];
+    const m = metaOf(i), last = mine.prices[pkey(i.name)];
     body = `<span class="eyebrow">${esc(GROUPS[i.group])}${i.src !== "mine" ? " · from " + esc(SRC_LABEL[i.src]) : ""}</span><h2>${esc(i.name)}</h2>
       ${i.sub.length || i.amount ? `<p class="muted" style="margin:0">${[i.amount, ...i.sub.map(([t]) => t)].filter(Boolean).map(esc).join(" · ")}</p>` : ""}
+      ${qpFields(m, last)}
       ${move}
       <div class="row"><button class="btn ghost spacer" data-act="remove" data-id="${esc(i.id)}">${removeLabel}</button>${open}<button class="btn primary" data-act="tick-sheet" data-id="${esc(i.id)}">Bought it</button></div>`;
+  } else if (sheet.type === "pay") {
+    const x = sheet.id === "new" ? sheet.draft : mine.log.find(x => x.id === sheet.id); if (!x) { closeSheet(); return }
+    const isNew = sheet.id === "new";
+    body = `<span class="eyebrow">${isNew ? "New purchase" : "Bought " + esc(x.on === todayKey() ? "today" : fromKey(x.on).toLocaleDateString("en-GB", { day: "numeric", month: "long" }))}</span>
+      ${isNew ? `<label class="f">What<input class="input" data-pay="name" value="${esc(x.name)}" placeholder="e.g. Coffee beans"></label>` : `<h2>${esc(x.name)}</h2>`}
+      ${qpFields({ qty: x.qty ?? 1, price: x.price, total: x.total }, null)}
+      ${isNew ? `<label class="f">Date<input class="input" type="date" data-pay="on" value="${x.on}" max="${todayKey()}"></label>` : ""}
+      <label class="f">Category<div class="seg">${GROUP_ORDER.map(k => `<button class="chip" style="--c:var(--g-${k})" data-act="pay-group" data-g="${k}" aria-pressed="${x.group === k}"><span class="dot"></span>${GROUPS[k]}</button>`).join("")}</div></label>
+      <div class="row">${isNew ? "" : `<button class="btn ghost spacer" data-act="pay-del">Delete</button>`}<button class="btn primary" data-act="${isNew ? "pay-add" : "close"}">${isNew ? "Add" : "Done"}</button></div>`;
   } else if (sheet.type === "settings") {
     const s = mine.settings, has = { household: !!householdData(), skin: !!skinData(), meals: !!mealsData() };
     const status = k => has[k] ? "" : " Not found on this device yet.";
@@ -657,9 +761,31 @@ function renderSheet() {
       <div class="setting"><span><span class="nm">Skin Diary</span><br><span class="sub">The To buy list: products to repurchase and ones you want to try.${status("skin")}</span></span><input type="checkbox" class="switch" data-act="set" data-k="skin"${s.skin ? " checked" : ""} aria-label="Skin Diary"></div>
       <div class="setting wide"><span><span class="nm">Meal Planner</span><br><span class="sub">Groceries for the meals you planned.${status("meals")}</span></span>
         <div class="seg">${[["rest", "This week"], ["next", "Next week"], ["off", "Off"]].map(([k, l]) => `<button class="chip" data-act="meals" data-v="${k}" aria-pressed="${s.meals === k}">${l}</button>`).join("")}</div></div></div>
+      <label class="f">Currency<input class="input" data-act="currency" value="${esc(s.currency || "")}" placeholder="RSD" maxlength="6" style="max-width:140px"></label>
       <div class="row"><button class="btn primary" data-act="close">Done</button></div>`;
   }
   root.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true"><span class="grab"></span>${body}</div></div>`;
+}
+function qpFields(m, last) {
+  return `<div class="qp"><label class="f">Quantity<span class="stepper"><button type="button" data-act="qty" data-d="-1" aria-label="One less">−</button><input class="input" inputmode="decimal" data-qp="qty" value="${fmtN(m.qty)}" aria-label="Quantity"><button type="button" data-act="qty" data-d="1" aria-label="One more">+</button></span></label>
+    <label class="f">Price each, ${esc(mine.settings.currency || "")}<input class="input" inputmode="decimal" data-qp="price" value="${m.price == null ? "" : fmtN(m.price).replace(/,/g, "")}" placeholder="${last == null ? "0" : fmtN(last).replace(/,/g, "")}"></label></div>
+    <p class="total-line" id="qpTotal">${totalLine(m.qty, m.price)}</p>`;
+}
+const totalLine = (q, p) => p == null ? `<span>Add a price to track spending</span>` : `${money(r2(q * p))} <span>total</span>`;
+/* Typing in the quantity or price fields saves straight away, to the list item or to the purchase. */
+function qpChanged() {
+  const root = $("#sheetRoot"), qEl = root.querySelector("[data-qp=qty]"), pEl = root.querySelector("[data-qp=price]"); if (!qEl) return;
+  const q = num(qEl.value) ?? 1, p = pEl.value.trim() === "" ? null : num(pEl.value);
+  if (sheet.type === "item") {
+    const i = gather().items.find(x => x.id === sheet.id); if (!i) return;
+    mine.meta[sheet.id] = { qty: q, ...(p != null ? { price: p } : {}) }; if (q === 1 && p == null) delete mine.meta[sheet.id];
+    saveMine(); render();
+  } else if (sheet.type === "pay") {
+    const x = sheet.id === "new" ? sheet.draft : mine.log.find(x => x.id === sheet.id); if (!x) return;
+    x.qty = q; x.price = p; x.total = p == null ? null : r2(q * p);
+    if (sheet.id !== "new") { if (p != null) mine.prices[pkey(x.name)] = p; saveMine(); render() }
+  }
+  root.querySelector("#qpTotal").innerHTML = totalLine(q, p);
 }
 function removeItem(id) {
   const [kind, ...rest] = id.split(":"), ref = rest.join(":"), i = gather().items.find(x => x.id === id); if (!i) return;
@@ -668,7 +794,8 @@ function removeItem(id) {
   else if (kind === "hx") { const d = readJSON(KEYS.household); delete d.shopping[ref]; writeJSON(KEYS.household, d) }
   else if (kind === "s") { const d = readJSON(KEYS.skin); d.template.toBuy = (d.template.toBuy || []).filter(x => x.id !== ref); writeJSON(KEYS.skin, d) }
   else if (kind === "m" || kind === "mx") tickItem(id);
-  else if (kind === "o") { delete mine.items[ref]; saveMine() }
+  else if (kind === "o") delete mine.items[ref];
+  if (kind !== "m" && kind !== "mx") { delete mine.meta[id]; saveMine() }
   closeSheet();
   if (kind !== "m" && kind !== "mx") { render(); toast(`Took ${i.name} off the list.`, undo) }
 }
@@ -676,7 +803,7 @@ function removeItem(id) {
 /* ---------- share ---------- */
 function listText() {
   const items = gather().items;
-  return GROUP_ORDER.filter(k => items.some(i => i.group === k)).map(k => `${GROUPS[k]}:\n` + items.filter(i => i.group === k).sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name)).map(i => `• ${i.name}${i.amount ? " — " + i.amount : ""}`).join("\n")).join("\n\n");
+  return GROUP_ORDER.filter(k => items.some(i => i.group === k)).map(k => `${GROUPS[k]}:\n` + items.filter(i => i.group === k).sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name)).map(i => { const m = metaOf(i); return `• ${i.name}${m.qty !== 1 ? " × " + fmtN(m.qty) : ""}${i.amount ? " — " + i.amount : ""}${m.total != null ? " (" + money(m.total) + ")" : ""}` }).join("\n")).join("\n\n");
 }
 async function share() {
   const text = listText(); if (!text) { toast("The list is empty."); return }
@@ -708,13 +835,43 @@ document.addEventListener("click", e => {
   else if (act === "settings") openSheet({ type: "settings" });
   else if (act === "meals") { mine.settings.meals = el.dataset.v; saveMine(); render(); renderSheet() }
   else if (act === "close") closeSheet();
+  else if (act === "view") { view = el.dataset.v; closeSheet(); render(); scrollTo(0, 0) }
+  else if (act === "month") { monthOff = Math.min(0, monthOff + +el.dataset.d); spendGroup = null; render() }
+  else if (act === "spend-group") { spendGroup = spendGroup === el.dataset.g ? null : el.dataset.g; render() }
+  else if (act === "pay") { if (id) openSheet({ type: "pay", id }) }
+  else if (act === "new-pay") openSheet({ type: "pay", id: "new", draft: { name: "", group: "other", qty: 1, price: null, total: null, on: todayKey(), src: "mine", picked: false } })
+  else if (act === "qty") { const q = $("#sheetRoot [data-qp=qty]"); q.value = fmtN(Math.max(1, Math.round((num(q.value) ?? 1) + +el.dataset.d))); qpChanged() }
+  else if (act === "pay-group") {
+    const x = sheet.id === "new" ? sheet.draft : mine.log.find(x => x.id === sheet.id); if (!x) return;
+    x.group = el.dataset.g; x.picked = true; if (sheet.id !== "new") { saveMine(); render() }
+    el.parentElement.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === el));
+  }
+  else if (act === "pay-del") {
+    const undo = snapshot(KEYS.mine), x = mine.log.find(x => x.id === sheet.id);
+    mine.log = mine.log.filter(y => y.id !== sheet.id); saveMine(); closeSheet(); render(); toast(`Deleted ${x?.name || "the purchase"}.`, undo);
+  }
+  else if (act === "pay-add") {
+    const d = sheet.draft; if (!d.name.trim()) { $("#sheetRoot [data-pay=name]").focus(); return }
+    const undo = snapshot(KEYS.mine), { picked, ...x } = d;
+    mine.log = [{ ...x, id: uid(), name: cap(d.name.trim()), at: Date.now() }, ...mine.log].sort((a, b) => b.on.localeCompare(a.on) || b.at - a.at).slice(0, 3000);
+    if (x.price != null) mine.prices[pkey(d.name)] = x.price;
+    saveMine(); closeSheet(); render(); toast(`Added ${cap(d.name.trim())} to ${monthLabel(x.on.slice(0, 7)).split(" ")[0]}.`, undo);
+  }
   else if (act === "share") share();
   else if (act === "theme") setTheme(THEMES[(THEMES.indexOf(themeNow()) + 1) % 3]);
 });
 document.addEventListener("change", e => {
   const el = e.target;
   if (el.dataset.act === "tick" && el.checked) { const li = el.closest(".item"); li?.classList.add("done"); setTimeout(() => tickItem(el.dataset.id), 220) }
+  if (el.dataset.pay === "on" && sheet?.draft) sheet.draft.on = el.value || todayKey();
+  if (el.dataset.qp) { const q = num(el.value); if (el.dataset.qp === "qty" && (q == null || q === 0)) { el.value = "1"; qpChanged() } }
   if (el.dataset.act === "set") { mine.settings[el.dataset.k] = el.checked; saveMine(); render() }
+});
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset.qp) qpChanged();
+  if (el.dataset.pay && sheet?.type === "pay" && sheet.id === "new") { sheet.draft[el.dataset.pay] = el.value; if (el.dataset.pay === "name" && !sheet.draft.picked) { sheet.draft.group = guessGroup(el.value); $("#sheetRoot").querySelectorAll("[data-act=pay-group]").forEach(c => c.setAttribute("aria-pressed", c.dataset.g === sheet.draft.group)) } }
+  if (el.dataset.act === "currency") { mine.settings.currency = el.value.trim(); saveMine(); render() }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && sheet) closeSheet() });
 const input = $("#addInput");

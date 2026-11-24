@@ -14,6 +14,9 @@ All the apps live on nurnhe.github.io, so they share the browser's storage on yo
 - **Your own items:** type anything in the box at the top (separate several with commas). The app guesses the group (Groceries, Household, Skin & personal care, Other); tap an item to move it.
 - **Your other apps:** cards at the bottom show chores due today, skincare products to replace and how much of the week is planned, and open each app.
 
+- **Prices and quantities:** tap any item to set how many and the price each. The list shows each item's cost and an estimated total per group. The last price you paid for something is remembered and suggested next time (shown with ≈).
+- **Spending:** the Spending tab totals what you bought each month by category (Household, Skin & personal care, Groceries, Other), with a bar for each, last month's total for comparison, and every purchase by day. Tap a category to see only its purchases, tap a purchase to fix its price, quantity or category, or add a purchase you made without the list. The currency (RSD by default) is in Settings.
+
 Every tick has **Undo**, and **In the basket today** lists what you've bought. The share button copies or shares the whole list, grouped.
 
 It only sees data saved by the installed apps on the same phone, not their Claude artifact versions.
@@ -26,7 +29,7 @@ It only sees data saved by the installed apps on the same phone, not their Claud
 
 ## Data
 
-The app's own items and settings are saved under `shopping-list-v1` in the browser's `localStorage`. The colour theme uses `nurnhe-theme`, shared with the other apps, so switching it in one switches them all.
+The app's own items, prices, purchase history and settings are saved under `shopping-list-v1` in the browser's `localStorage`. The colour theme uses `nurnhe-theme`, shared with the other apps, so switching it in one switches them all.
 
 ## Credits
 
