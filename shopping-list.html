@@ -1,0 +1,713 @@
+<title>Shopping List</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* One list for every shop: what Household Diary is running low on, what Skin Diary wants to buy, the week's groceries from
+   Meal Planner, and anything typed in here. Look: warm paper, deep teal and apricot, flat cards. Bricolage Grotesque for headings, Figtree for the rest. */
+:root {
+  --bg: #FAF6EF; --bg-2: #F4EEE3;
+  --surface: #FFFFFF; --surface-2: #FCFAF6; --ink: #2B2E33; --muted: #7A7D82; --line: rgba(43, 46, 51, .11);
+  --accent: #2B7A78; --accent-ink: #FFFFFF; --accent-soft: #E1F0EE; --sun: #F2A65A; --sun-soft: #FDEEDC;
+  --warn: #C2553A; --ok: #2B7A78;
+  --g-groceries: #E39A3B; --g-household: #4F9A6E; --g-care: #CF6F8A; --g-other: #7C86B8;
+  --shadow: 0 1px 0 rgba(30, 30, 30, .04), 0 6px 18px rgba(30, 30, 30, .06);
+  --shadow-lg: 0 18px 50px rgba(30, 30, 30, .22);
+  --head: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --sans: "Figtree", "Avenir Next", "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1B1F22; --bg-2: #20252A; --surface: #262C31; --surface-2: #2C3338; --ink: #F1EDE6; --muted: #A6ADB3; --line: rgba(241, 237, 230, .14);
+  --accent: #7FCBC6; --accent-ink: #0F2524; --accent-soft: #1F3836; --sun: #F0B271; --sun-soft: #3A2D1E; --warn: #EB977F; --ok: #7FCBC6;
+  --g-groceries: #EDB168; --g-household: #86C79E; --g-care: #E59AB0; --g-other: #A4ADDB;
+  --shadow: 0 1px 0 rgba(0,0,0,.25), 0 6px 18px rgba(0,0,0,.3); --shadow-lg: 0 18px 50px rgba(0,0,0,.6); color-scheme: dark } }
+:root[data-theme="light"] { color-scheme: light }
+:root[data-theme="dark"] {
+  --bg: #1B1F22; --bg-2: #20252A; --surface: #262C31; --surface-2: #2C3338; --ink: #F1EDE6; --muted: #A6ADB3; --line: rgba(241, 237, 230, .14);
+  --accent: #7FCBC6; --accent-ink: #0F2524; --accent-soft: #1F3836; --sun: #F0B271; --sun-soft: #3A2D1E; --warn: #EB977F; --ok: #7FCBC6;
+  --g-groceries: #EDB168; --g-household: #86C79E; --g-care: #E59AB0; --g-other: #A4ADDB;
+  --shadow: 0 1px 0 rgba(0,0,0,.25), 0 6px 18px rgba(0,0,0,.3); --shadow-lg: 0 18px 50px rgba(0,0,0,.6); color-scheme: dark }
+
+* { box-sizing: border-box }
+html { min-height: 100% }
+body { margin: 0; min-height: 100%; color: var(--ink); font: 400 15px/1.5 var(--sans); background: linear-gradient(180deg, var(--bg), var(--bg-2)) fixed; background-color: var(--bg) }
+.wrap { max-width: 880px; margin: 0 auto; padding-block: 26px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px }
+h1, h2, h3 { margin: 0; font-family: var(--head); text-wrap: balance }
+h1 { font-size: clamp(34px, 7vw, 50px); font-weight: 650; line-height: 1; letter-spacing: -.03em }
+h1 em { font-style: normal; color: var(--accent); position: relative; isolation: isolate }
+h1 em::after { content: ""; position: absolute; left: -.04em; right: -.04em; bottom: .04em; height: .2em; border-radius: 99px; background: var(--sun); opacity: .55; z-index: -1 }
+h2 { font-size: 19px; font-weight: 650; letter-spacing: -.01em }
+button, input, select { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.muted { color: var(--muted) }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted) }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow) }
+
+header.top { display: flex; align-items: start; justify-content: space-between; gap: 12px }
+.brand { display: grid; gap: 8px; min-width: 0 }
+.summary { font-size: 14.5px; color: var(--muted); font-weight: 500 }
+.summary b { color: var(--ink); font-weight: 700 }
+.icon-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 12px; transition: border-color .2s, color .2s }
+.icon-btn:hover { border-color: var(--accent); color: var(--accent) }
+.icon-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round }
+.top-btns { display: flex; gap: 8px }
+
+a.btn { text-decoration: none; color: var(--ink); display: inline-flex; align-items: center }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 14px; font-weight: 600; transition: border-color .2s, background .2s, color .2s; white-space: nowrap }
+.btn:hover { border-color: var(--accent); color: var(--accent) }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.btn.primary:hover { filter: brightness(1.05); color: var(--accent-ink) }
+.btn.small { padding: 5px 11px; font-size: 13px; border-radius: 9px }
+.btn.ghost { background: none; border-color: transparent; color: var(--muted) }
+.btn.ghost:hover { color: var(--accent); border-color: var(--line) }
+
+/* Add bar */
+.add { display: flex; gap: 8px; padding: 8px; align-items: center }
+.add input { flex: 1; min-width: 0; border: 0; background: none; padding: 8px 10px; font-size: 16px; outline: none }
+.add .guess { font-size: 12.5px; font-weight: 600; color: var(--muted); white-space: nowrap; display: flex; align-items: center; gap: 6px }
+.add .guess:empty { display: none }
+
+/* Filter chips */
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px }
+.chips::-webkit-scrollbar { display: none }
+.chip { --c: var(--accent); display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 6px 13px; font-weight: 600; font-size: 14px; color: var(--ink); white-space: nowrap }
+.chip .n { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+.chip[aria-pressed="true"] .n { color: inherit; opacity: .7 }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none }
+
+/* Connected apps strip */
+.apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px }
+.app-card { --c: var(--accent); display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; text-decoration: none; color: inherit; transition: border-color .2s }
+.app-card:hover { border-color: var(--c) }
+.app-card .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 18%, var(--surface)); color: color-mix(in srgb, var(--c) 80%, var(--ink)) }
+.app-card .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round }
+.app-card .nm { font-weight: 700; font-size: 14.5px }
+.app-card .sub { font-size: 13px; color: var(--muted); line-height: 1.35 }
+.app-card .go { color: var(--muted); font-size: 18px }
+
+/* Groups and items */
+.groups { display: grid; gap: 14px }
+.group { --c: var(--g-other); padding: 14px 10px 8px 14px; box-shadow: var(--shadow), inset 4px 0 0 var(--c) }
+.group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 6px 6px 4px }
+.group-head .count { font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums }
+.items { list-style: none; margin: 0; padding: 0; display: grid }
+.item { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 6px 9px 4px; border-top: 1px solid var(--line) }
+.items > .item:first-child, .items > .aisle + .item { border-top: 0 }
+.aisle { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 12px 4px 2px; border-top: 1px solid var(--line) }
+.items > .aisle:first-child { border-top: 0; padding-top: 0 }
+.aisle.pantry::after { content: " · spices and oil you may already have"; text-transform: none; letter-spacing: 0; font-weight: 500 }
+.item .check { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; margin: 0; border-radius: 8px; border: 1.75px solid color-mix(in srgb, var(--muted) 70%, transparent); background: var(--surface); display: grid; place-items: center; cursor: pointer; transition: background .15s, border-color .15s }
+.item .check::after { content: "✓"; font-size: 14px; font-weight: 700; line-height: 1; color: var(--accent-ink); opacity: 0 }
+.item .check:checked { background: var(--ok); border-color: var(--ok) }
+.item .check:checked::after { opacity: 1 }
+.item .body { min-width: 0; border: 0; background: none; padding: 0; text-align: left; display: grid; gap: 1px }
+.item .nm { font-weight: 600; overflow-wrap: anywhere }
+.item .sub { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center }
+.item .amt { font-size: 13.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right }
+.tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: color-mix(in srgb, var(--t, var(--muted)) 85%, var(--ink)) }
+.tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round }
+.tag.warn { color: var(--warn) }
+.item.done .nm { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 70%, transparent) }
+.item .side { display: flex; align-items: center; gap: 6px }
+
+.soon { padding: 14px 14px 10px; background: var(--sun-soft); border-color: color-mix(in srgb, var(--sun) 35%, var(--line)) }
+.soon .items .item { grid-template-columns: minmax(0, 1fr) auto; border-color: color-mix(in srgb, var(--sun) 25%, var(--line)) }
+.basket { padding: 14px 14px 8px }
+.basket summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 8px }
+.basket summary::-webkit-details-marker { display: none }
+.basket summary h2::after { content: " ›"; color: var(--muted); display: inline-block; transition: transform .2s }
+.basket[open] summary h2::after { transform: rotate(90deg) }
+.basket .items { margin-top: 6px }
+.basket .item { grid-template-columns: minmax(0, 1fr) auto }
+
+.empty { padding: 28px 22px; text-align: center; display: grid; gap: 10px; justify-items: center }
+.empty h2 { font-size: 22px }
+.empty p { margin: 0; max-width: 52ch }
+.note { font-size: 13px; color: var(--muted); text-align: center; margin: 4px 0 0 }
+
+/* Bottom sheet */
+.scrim { position: fixed; inset: 0; background: rgba(15, 18, 20, .38); z-index: 30; display: grid; align-items: end; justify-items: center; animation: fade .2s }
+.sheet { width: min(560px, 100%); max-height: 88vh; overflow: auto; background: var(--surface); border-radius: 20px 20px 0 0; padding: 18px 18px calc(22px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; box-shadow: var(--shadow-lg); animation: up .25s cubic-bezier(.2, .8, .3, 1) }
+@media (min-width: 701px) { .scrim { align-items: center } .sheet { border-radius: 20px } }
+.sheet .grab { width: 40px; height: 4px; border-radius: 99px; background: var(--line); justify-self: center; margin-top: -6px }
+.sheet h2 { font-size: 22px }
+.sheet label.f { display: grid; gap: 6px; font-weight: 600; font-size: 13.5px; color: var(--muted) }
+.input { border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 16px; color: var(--ink); width: 100% }
+.seg { display: flex; flex-wrap: wrap; gap: 8px }
+.row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end }
+.row .spacer { margin-right: auto }
+.setting { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line) }
+.setting .nm { font-weight: 600 }
+.setting .sub { font-size: 13px; color: var(--muted) }
+.setting.wide { grid-template-columns: 1fr }
+.switch { appearance: none; -webkit-appearance: none; width: 44px; height: 26px; border-radius: 99px; background: var(--line); position: relative; cursor: pointer; transition: background .2s; margin: 0 }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s }
+.switch:checked { background: var(--accent) }
+.switch:checked::after { transform: translateX(18px) }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40; width: max-content; max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--bg); border-radius: 12px; padding: 10px 10px 10px 16px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-lg); font-weight: 500; animation: up .25s }
+.toast button { border: 0; background: none; color: var(--sun); font-weight: 700; padding: 4px 8px }
+@keyframes up { from { transform: translateY(24px); opacity: 0 } }
+@keyframes fade { from { opacity: 0 } }
+.toast { animation-name: toastIn }
+@keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important } }
+@media (max-width: 520px) { .app-card .sub { font-size: 12.5px } .item .amt { max-width: 34vw; white-space: normal } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Shopping <em>list</em></h1>
+      <div class="summary" id="summary"></div>
+    </div>
+    <div class="top-btns">
+      <button class="icon-btn" data-act="share" aria-label="Copy or share the list" title="Copy or share the list"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
+      <button class="icon-btn" data-act="settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+      <button class="icon-btn" data-act="theme" id="themeBtn"></button>
+    </div>
+  </header>
+  <form class="add card" data-form="add" autocomplete="off">
+    <input id="addInput" placeholder="Add something to buy…" aria-label="Add something to buy" enterkeyhint="done">
+    <span class="guess" id="guess"></span>
+    <button class="btn primary">Add</button>
+  </form>
+  <main id="main" style="display:grid;gap:14px"></main>
+</div>
+<div id="sheetRoot"></div>
+<div id="toastRoot" aria-live="polite"></div>
+
+<script>
+/* ---------- the other apps' saved data (same site, so same localStorage) ---------- */
+const KEYS = { household: "household-diary-v1", skin: "skin-diary-v1", meals: "meal-planner", mine: "shopping-list-v1" };
+const APP_URL = { household: "../household-diary/", skin: "../skin-diary/", meals: "../meal-planner/" };
+const readJSON = k => { try { return JSON.parse(localStorage.getItem(k) || "null") } catch (e) { return null } };
+const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true } catch (e) { toast("Couldn't save on this device. Free up some browser storage and try again."); return false } };
+const raw = k => { try { return localStorage.getItem(k) } catch (e) { return null } };
+const restore = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch (e) {} };
+
+/* ---------- dates (local YYYY-MM-DD, like the other apps) ---------- */
+const keyOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const fromKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d) };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
+const todayKey = () => keyOf(new Date());
+const keyAdd = (k, n) => keyOf(addDays(fromKey(k), n));
+const dayNum = k => { const [y, m, d] = k.split("-").map(Number); return Math.round(Date.UTC(y, m - 1, d) / 864e5) };
+const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d };
+const mondayOf = d => addDays(d, -((d.getDay() + 6) % 7));
+const ymd = keyOf;
+const daysAgo = k => dayNum(todayKey()) - dayNum(k);
+const agoLabel = k => { const n = daysAgo(k); return n <= 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago` };
+const inDays = k => { const n = -daysAgo(k); return n <= 0 ? "now" : n === 1 ? "tomorrow" : `in ${n} days` };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+/* ---------- reading Meal Planner ingredients (copied from Meal Planner so the totals match exactly) ---------- */
+let lang = "en";
+const L = () => (lang === "ru" ? 1 : 0);
+const LOCALE = () => (lang === "ru" ? "ru-RU" : "en-GB");
+const cap = s => s ? s[0].toLocaleUpperCase() + s.slice(1) : s;
+/* ---------- reading ingredient lines ---------- */
+/* Units: canonical key → English label (singular, plural), Russian label, and the spellings people use in both languages. */
+const UNITS = {
+  g: ["g", "г", "g|gr|gram|grams|gramme|grammes|г|гр|грамм|грамма|граммов"],
+  kg: ["kg", "кг", "kg|kgs|kilo|kilos|kilogram|kilograms|кг|килограмм|килограмма|килограммов"],
+  ml: ["ml", "мл", "ml|millilitre|millilitres|milliliter|milliliters|мл|миллилитр|миллилитра|миллилитров"],
+  l: ["l", "л", "l|litre|litres|liter|liters|л|литр|литра|литров"],
+  tbsp: ["tbsp", "ст. л.", "tbsp|tbsps|tbs|tablespoon|tablespoons|ст.л.|ст. л.|ст л|ст. ложки|ст. ложка|ст. ложку|ст.ложки|столовая ложка|столовые ложки|столовых ложки|столовых ложек|столовой ложки|столовую ложку"],
+  tsp: ["tsp", "ч. л.", "tsp|tsps|teaspoon|teaspoons|ч.л.|ч. л.|ч л|ч. ложки|ч. ложка|ч. ложку|ч.ложки|чайная ложка|чайные ложки|чайных ложки|чайных ложек|чайной ложки|чайную ложку"],
+  cup: ["cup|cups", "стак.", "cup|cups|стакан|стакана|стаканов|стак."],
+  clove: ["clove|cloves", "зубч.", "clove|cloves|зубчик|зубчика|зубчиков|зубчиков|зуб."],
+  pinch: ["pinch|pinches", "щеп.", "pinch|pinches|щепотка|щепотки|щепоток|щепотку|щеп."],
+  can: ["can|cans", "банк.", "can|cans|tin|tins|банка|банки|банок|банку"],
+  bunch: ["bunch|bunches", "пуч.", "bunch|bunches|пучок|пучка|пучков"],
+  slice: ["slice|slices", "ломт.", "slice|slices|ломтик|ломтика|ломтиков|ломтя"],
+  pack: ["pack|packs", "уп.", "pack|packs|packet|packets|упаковка|упаковки|упаковок|уп.|пачка|пачки|пачек"],
+  head: ["head|heads", "кочан", "head|heads|кочан|кочана|кочанов|головка|головки"],
+  handful: ["handful|handfuls", "горсть", "handful|handfuls|горсть|горсти"],
+  oz: ["oz", "унц.", "oz|ounce|ounces"],
+  lb: ["lb", "фунт.", "lb|lbs|pound|pounds"],
+  pcs: ["", "шт.", "pc|pcs|piece|pieces|шт|шт.|штука|штуки|штук"]
+};
+const UNIT_ALIAS = {};
+for (const [k, [, , words]] of Object.entries(UNITS)) for (const w of words.split("|")) if (w) UNIT_ALIAS[w.toLowerCase()] = k;
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const UNIT_ALT = Object.keys(UNIT_ALIAS).filter(Boolean).sort((a, b) => b.length - a.length).map(reEsc).join("|");
+const UNIT_RE = new RegExp(`^(${UNIT_ALT})(?![a-zа-яё])\\.?`, "i");
+const FRAC = { "½": .5, "⅓": 1 / 3, "⅔": 2 / 3, "¼": .25, "¾": .75, "⅛": .125 };
+const NUM = "(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+[.,]\\d+|\\d+\\s?[½⅓⅔¼¾⅛]|\\d+|[½⅓⅔¼¾⅛])";
+const QTY_RE = new RegExp(`^(${NUM})(?:\\s*(?:-|–|—|to|до)\\s*(${NUM}))?\\s*`, "i");
+const TRAIL_RE = new RegExp(`^(.*?[a-zа-яё)][^\\d]*?)\\s+(${NUM})\\s*(${UNIT_ALT})?\\.?\\s*$`, "i");
+const TO_TASTE_RE = /to taste|по вкусу|optional|по желанию|for serving|to serve|для подачи/i;
+const NO_QTY_UNITS = new Set(["pinch", "bunch", "handful"]);
+
+function toNum(s) {
+  s = s.trim();
+  let m;
+  if ((m = s.match(/^(\d+)\s+(\d+)\/(\d+)$/))) return +m[1] + m[2] / m[3];
+  if ((m = s.match(/^(\d+)\/(\d+)$/))) return m[1] / m[2];
+  if ((m = s.match(/^(\d+)\s?([½⅓⅔¼¾⅛])$/))) return +m[1] + FRAC[m[2]];
+  if (FRAC[s]) return FRAC[s];
+  return parseFloat(s.replace(",", "."));
+}
+function cleanLine(s) {
+  return s.replace(/\*\*|__|`/g, "").replace(/^\s*(?:[-*•·▪◦–—]|\[\s?\]|\d+[.)](?=\s))\s*/, "").replace(/^\s*\*\s+/, "").trim();
+}
+function parseAmount(s) {
+  s = s.trim();
+  let qty = null, unit = null, rest = s;
+  const q = rest.match(QTY_RE);
+  if (q && q[0].trim()) { qty = toNum(q[2] || q[1]); rest = rest.slice(q[0].length) }
+  const adj = rest.match(/^(?:крупн|средн|небольш|больш|маленьк|large|medium|small|big)\p{L}*\s+/iu);
+  const u = rest.slice(adj ? adj[0].length : 0).match(UNIT_RE);
+  if (u && adj) rest = rest.slice(adj[0].length);
+  if (u && (qty != null || NO_QTY_UNITS.has(UNIT_ALIAS[u[1].toLowerCase()]))) {
+    unit = UNIT_ALIAS[u[1].toLowerCase()];
+    if (qty == null) qty = 1;
+    rest = rest.slice(u[0].length);
+  }
+  if (qty == null) return null;
+  rest = rest.replace(/^\s*(?:of|x|×)\s+/i, "").trim();
+  return { qty, unit, rest };
+}
+function tidyName(s) {
+  return s.replace(/\([^)]*\)/g, " ").split(/,|;|\s[—–-]\s/)[0].replace(TO_TASTE_RE, "").replace(/\s+(?:and|и)\s*$/i, "").replace(/[.:]+$/, "").replace(/\s+/g, " ").trim();
+}
+/* Reads "200 g spaghetti", "2 chicken breasts, diced", "Творог — 400 г", "Мука 3 ст. л.", "Salt and pepper, to taste". */
+function parseIngredient(raw) {
+  const s = cleanLine(raw);
+  let name = s, rest = s, amt = null;
+  const d = s.match(/^(.+?)\s+[—–-]\s+(.+)$/) || s.match(/^([^:\d]+?):\s*(.+)$/);
+  if (d && /[a-zа-яё]/i.test(d[1])) {
+    name = rest = d[1];
+    amt = parseAmount(d[2]);
+    if (!amt) rest = s;
+  }
+  if (!amt && !d) {
+    const a = parseAmount(s);
+    if (a && a.rest) { amt = a; name = rest = a.rest }
+  }
+  if (!amt && !d) {
+    const m = s.match(TRAIL_RE);
+    if (m) { const unit = m[3] ? UNIT_ALIAS[m[3].toLowerCase()] : null; amt = { qty: toNum(m[2]), unit }; name = rest = m[1] }
+  }
+  const qty = amt?.qty ?? null;
+  return { qty: Number.isFinite(qty) ? qty : null, unit: amt?.unit || null, name: tidyName(name) || s, rest: rest.trim(), toTaste: TO_TASTE_RE.test(s), raw: s };
+}
+
+/* ---------- shopping sections and merging ---------- */
+const SPECIFIC = [
+  ["peanut butter", "tins"], ["арахисовая паста", "tins"], ["olive oil", "pantry"], ["оливковое масло", "pantry"], ["coconut milk", "tins"], ["кокосовое молоко", "tins"],
+  ["sour cream", "dairy"], ["cream cheese", "dairy"], ["tomato paste", "tins"], ["tomato puree", "tins"], ["томатная паста", "tins"], ["chopped tomatoes", "tins"], ["tinned tomatoes", "tins"], ["canned tomatoes", "tins"],
+  ["в собственном соку", "tins"], ["black pepper", "pantry"], ["ground pepper", "pantry"], ["черный перец", "pantry"], ["перец черный", "pantry"], ["молотый перец", "pantry"], ["перец молотый", "pantry"],
+  ["salt and pepper", "pantry"], ["соль и перец", "pantry"], ["bell pepper", "produce"], ["sweet pepper", "produce"], ["болгарский перец", "produce"], ["сладкий перец", "produce"],
+  ["chilli flakes", "pantry"], ["chili flakes", "pantry"], ["red pepper flakes", "pantry"], ["chicken stock", "tins"], ["chicken broth", "tins"], ["куриный бульон", "tins"],
+  ["soy sauce", "tins"], ["соевый соус", "tins"], ["baking powder", "pantry"], ["baking soda", "pantry"], ["сливочное масло", "dairy"], ["green onion", "produce"], ["spring onion", "produce"], ["зеленый лук", "produce"],
+  ["lemon juice", "produce"], ["лимонный сок", "produce"], ["frozen", "frozen"], ["заморож", "frozen"]
+];
+const STEMS = {
+  dairy: "milk cream cheese butter yogurt yoghurt egg parmesan mozzarella feta ricotta halloumi kefir cottage молок сливк сыр сливочн йогурт яйц яйко яичн сметан кефир творог моцарел пармезан фет рикотт брынз ряженк",
+  meat: "trout hake форел хек chicken beef pork lamb turkey bacon ham sausage mince steak salmon tuna cod fish shrimp prawn курин куриц кур говя свин баран индейк бекон ветчин колбас сосиск фарш стейк лосос семг тунец треск рыб кревет филе",
+  bakery: "lepinj flatbread лепин лепешк bread baguette tortilla wrap pita bun хлеб багет лаваш тортиль пит булоч батон",
+  grains: "polenta полент pasta spaghetti penne fusilli noodle rice oat flour quinoa buckwheat couscous bulgur lasagne breadcrumb granola cereal макарон паст спагет пенне лапш рис овсян хлопь мук киноа греч кускус булгур панировоч гранол",
+  tins: "tahini hummus тахини хумус пассат canned tinned stock broth sauce bean chickpea lentil honey jam mustard mayo ketchup olive pesto passata консерв бульон соус фасол нут чечевиц мед варень горчиц майонез кетчуп маслин оливк песто",
+  nuts: "nut almond walnut cashew pistachio hazelnut pecan seed chia sesame raisin date prune apricot орех миндал кешью фисташ фундук семен семечк чиа кунжут изюм финик чернослив курага",
+  pantry: "salt pepper sugar oil vinegar spice paprika cumin cinnamon oregano thyme rosemary turmeric curry nutmeg vanilla cocoa bay сол перец сахар масл уксус специ паприк зир кориц орегано тимьян розмарин куркум карри мускат ванил сод какао лавров приправ",
+  produce: "chard мангольд onion shallot garlic tomato potato carrot celery lettuce spinach kale rocket cucumber courgette zucchini aubergine eggplant broccoli cauliflower cabbage mushroom avocado apple banana lemon lime orange berr strawberr blueberr raspberr grape pear peach mango herb parsley dill coriander cilantro basil mint ginger chilli chili leek beet pumpkin squash corn pea лук чеснок помидор томат черри картоф картошк морков сельдер салат шпинат руккол огур кабач баклажан брокк цветн капуст гриб шампиньон авокадо яблок банан лимон лайм апельсин ягод клубник черник малин виноград груш персик манго зелен петруш укроп кинз базилик мят имбир чили порей свекл тыкв кукуруз горош батат"
+};
+const STEM_RE = Object.fromEntries(Object.entries(STEMS).map(([k, v]) => [k, new RegExp(`(^|[^a-zа-я])(${v.split(" ").join("|")})`)]));
+const SEC_ORDER = ["dairy", "meat", "bakery", "grains", "tins", "nuts", "pantry", "produce"];
+const low = s => s.toLowerCase().replace(/ё/g, "е");
+function sectionOf(name) {
+  const s = low(name);
+  for (const [p, sec] of SPECIFIC) if (s.includes(p)) return sec;
+  for (const sec of SEC_ORDER) if (STEM_RE[sec].test(s)) return sec;
+  return "other";
+}
+const isWater = name => /(^|\s)(water|вода|воды|воду|кипяток|кипятка)(\s|$)/.test(low(name)) && low(name).split(" ").length <= 2;
+/* A loose key so "Eggs" and "egg", or "Яйца" and "Яйцо", land on one line of the list. */
+function itemKey(name) {
+  return low(name).replace(/[^a-zа-я ]/g, " ").split(/\s+/).filter(Boolean).map(w => {
+    if (/[а-я]/.test(w)) return w.length > 3 ? w.replace(/[аяоеиыуюйь]+$/, "") : w;
+    if (w.length <= 3) return w;
+    if (/ies$/.test(w)) return w.slice(0, -3) + "y";
+    if (/(oes|ches|shes|xes)$/.test(w)) return w.slice(0, -2);
+    if (/[^s]s$/.test(w)) return w.slice(0, -1);
+    return w;
+  }).join(" ");
+}
+const BASE = { kg: ["g", 1000], l: ["ml", 1000] };
+const WHOLE = new Set(["pcs", "can", "pack", "clove", "bunch", "slice", "head"]);
+function unitLabel(unit, qty) {
+  if (!unit) return lang === "ru" ? "шт." : "";
+  const def = UNITS[unit][L()];
+  if (!def.includes("|")) return def;
+  const [one, many] = def.split("|");
+  return qty > 1 ? many : one;
+}
+function fmtNum(v) {
+  const whole = Math.floor(v), f = Math.round((v - whole) * 100) / 100;
+  const fr = { .25: "¼", .5: "½", .75: "¾", .33: "⅓", .67: "⅔" }[f];
+  if (fr) return (whole || "") + fr;
+  return new Intl.NumberFormat(LOCALE(), { maximumFractionDigits: 2 }).format(v);
+}
+function fmtAmount(qty, unit, shopping) {
+  if (qty == null) return "";
+  let v = qty, u = unit;
+  if (u === "g" && v >= 1000) { v /= 1000; u = "kg" } else if (u === "ml" && v >= 1000) { v /= 1000; u = "l" }
+  if (u === "g" || u === "ml") v = v >= 100 ? Math.round(v / 10) * 10 : Math.max(1, Math.round(v));
+  else if (u === "kg" || u === "l") v = Math.round(v * 100) / 100;
+  else if (shopping && (!u || WHOLE.has(u))) v = Math.ceil(v - 0.01);
+  else v = v >= 10 ? Math.round(v) : Math.round(v * 12) / 12;
+  const label = unitLabel(u, v);
+  return label ? `${fmtNum(v)} ${label}` : fmtNum(v);
+}
+
+const forLabel = rs => "for " + rs[0] + (rs.length > 1 ? ` and ${rs.length - 1} more` : "");
+const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+const AISLE = { produce: ["Fruit & veg", "Овощи и фрукты"], meat: ["Meat & fish", "Мясо и рыба"], dairy: ["Dairy & eggs", "Молочное и яйца"], bakery: ["Bakery", "Выпечка"],
+  grains: ["Pasta, rice & grains", "Крупы и макароны"], tins: ["Jars & tins", "Банки и соусы"], nuts: ["Nuts & dried fruit", "Орехи и сухофрукты"], frozen: ["Frozen", "Заморозка"], other: ["Other", "Другое"], pantry: ["Check at home", "Проверить дома"] };
+const AISLE_ORDER = ["produce", "meat", "dairy", "bakery", "grains", "tins", "nuts", "frozen", "other", "pantry"];
+
+/* ---------- this app's own data ---------- */
+let mine = { items: {}, log: [], settings: { household: true, skin: true, meals: "rest" } };
+function loadMine() {
+  const d = readJSON(KEYS.mine) || {};
+  mine = { items: d.items || {}, log: d.log || [], settings: { household: true, skin: true, meals: "rest", ...(d.settings || {}) } };
+}
+const saveMine = () => writeJSON(KEYS.mine, mine);
+function logBought(name, group, src) {
+  mine.log = [{ name, group, src, on: todayKey(), at: Date.now() }, ...mine.log.filter(x => daysAgo(x.on) < 14)].slice(0, 80);
+}
+
+/* ---------- which group something belongs in ---------- */
+const GROUPS = { groceries: "Groceries", household: "Household", care: "Skin & personal care", other: "Other" };
+const GROUP_ORDER = ["household", "care", "groceries", "other"];
+const CARE_RE = /serum|cream|crème|spf|sunscreen|sun screen|cleanser|toner|essence|moistur|retinol|retinal|niacinamide|acid|mask|balm|lip|shampoo|conditioner|hair|tooth|floss|mouthwash|deodorant|razor|shav|cotton pad|cotton bud|q-tip|make ?up|mascara|micellar|body lotion|lotion|shower gel|body wash|hand cream|perfume|nail|tampon|pad|sanitary|сыворот|крем|шампун|бальзам|маск|тоник|зубн|дезодор/i;
+const HOME_RE = /detergent|washing|laundry|softener|bleach|cleaner|spray|wipes|sponge|scrub|cloth|dish ?soap|washing.up|dishwasher|rinse aid|salt tablets|bin bag|trash bag|garbage bag|bags|foil|cling|baking paper|parchment|paper towel|kitchen roll|toilet paper|toilet roll|tissues|napkin|bulb|batter|filter|candle|hand soap|soap|air freshener|descaler|gloves|mop|broom|vacuum|порош|моющ|губк|салфет|пакет|туалетн|бумаг|лампоч|батаре|фильтр|мыло/i;
+function guessGroup(name) {
+  if (CARE_RE.test(name)) return "care";
+  if (HOME_RE.test(name)) return "household";
+  if (sectionOf(name) !== "other") return "groceries";
+  return "other";
+}
+
+/* ---------- gather everything to buy ---------- */
+const HOUSE_CARE_AREAS = new Set(["Personal care"]);
+function householdData() { const d = readJSON(KEYS.household); return d && (d.supplies || d.chores) ? { chores: d.chores || {}, supplies: d.supplies || {}, shopping: d.shopping || {} } : null }
+function skinData() { const d = readJSON(KEYS.skin); return d && d.template ? d : null }
+function mealsData() { const d = readJSON(KEYS.meals); return d && Array.isArray(d.recipes) ? d : null }
+
+function mealWeek() {
+  const now = today0(), mon = mondayOf(now);
+  if (mine.settings.meals === "next") return { key: ymd(addDays(mon, 7)), days: [...Array(7)].map((_, i) => ymd(addDays(mon, 7 + i))) };
+  return { key: ymd(mon), days: [...Array(7)].map((_, i) => addDays(mon, i)).filter(d => d >= now).map(ymd) };
+}
+function mealItems(md) {
+  lang = md.lang || "en";
+  const byId = id => md.recipes.find(r => r.id === id), items = new Map(), { key, days } = mealWeek();
+  for (const k of days) for (const meal of MEAL_SLOTS) {
+    const e = md.plan?.[k]?.[meal], r = e && byId(e.r);
+    if (!r) continue;
+    const f = (e.s || r.servings || 1) / (r.servings || e.s || 1);
+    for (const line of r.ingredients || []) {
+      if (!line.trim()) continue;
+      const p = parseIngredient(line);
+      if (isWater(p.name)) continue;
+      const ik = itemKey(p.name);
+      if (!ik) continue;
+      let it = items.get(ik);
+      if (!it) items.set(ik, it = { key: ik, name: cap(p.name), section: sectionOf(p.name), amounts: {}, loose: false, recipes: new Set() });
+      it.recipes.add(r.name);
+      if (p.qty == null) { if (/to taste|по вкусу/i.test(p.raw)) it.taste = true; it.loose = true; continue }
+      const [bu, mul] = BASE[p.unit] || [p.unit || "pcs", 1];
+      it.amounts[bu] = (it.amounts[bu] || 0) + p.qty * mul * f;
+    }
+  }
+  const store = md.shop?.[key] || { checked: {}, extra: [] }, out = [];
+  for (const it of items.values()) {
+    it.amount = Object.entries(it.amounts).map(([u, q]) => fmtAmount(q, u === "pcs" ? null : u, true)).join(" + ");
+    if (!it.amount && it.loose && it.section !== "pantry" && /^(salt|pepper|соль|перец)/i.test(it.name)) it.section = "pantry";
+    if (store.checked?.[it.key]) continue;
+    out.push({ id: "m:" + it.key, src: "meals", group: "groceries", name: it.name, amount: it.amount || (it.taste ? "to taste" : ""),
+      aisle: it.section, sub: [[forLabel([...it.recipes]), ""]], sort: AISLE_ORDER.indexOf(it.section) });
+  }
+  for (const x of store.extra || []) if (!x.done) out.push({ id: "mx:" + x.id, src: "meals", group: "groceries", name: x.text, aisle: "other", sub: [["Also buy, from Meal Planner", ""]], sort: AISLE_ORDER.indexOf("other") });
+  return out;
+}
+
+function gather() {
+  const out = [], soon = [], hd = mine.settings.household && householdData(), sd = mine.settings.skin && skinData(), md = mine.settings.meals !== "off" && mealsData();
+  if (hd) {
+    const t = todayKey();
+    for (const s of Object.values(hd.supplies)) {
+      const group = HOUSE_CARE_AREAS.has(s.area) ? "care" : "household";
+      if (s.low) out.push({ id: "h:" + s.id, src: "household", group, name: s.name, sub: [[s.area, ""], [s.lowSince ? `running low since ${agoLabel(s.lowSince)}` : "running low", ""]], sort: 0 });
+      else if (s.bought && s.lasts) { const end = keyAdd(s.bought, s.lasts); if (dayNum(end) - dayNum(t) <= 5) soon.push({ id: s.id, name: s.name, area: s.area, end }) }
+    }
+    for (const x of Object.values(hd.shopping).sort((a, b) => (a.added || 0) - (b.added || 0))) out.push({ id: "hx:" + x.id, src: "household", group: guessGroup(x.name) === "care" ? "care" : "household", name: x.name, sub: [["Added in Household Diary", ""]], sort: 1 });
+  }
+  if (sd) {
+    const prods = sd.template.products || [];
+    for (const b of sd.template.toBuy || []) {
+      const re = b.restock && prods.find(p => p.id === b.restock);
+      out.push({ id: "s:" + b.id, src: "skin", group: "care", name: b.name, brand: b.brand, sub: [[b.brand || "", ""], [re ? "Restock, you finished it" : (SKIN_STEPS[b.step] || "Skincare"), re ? "" : ""]], sort: 2 });
+    }
+  }
+  if (md) out.push(...mealItems(md));
+  for (const x of Object.values(mine.items)) { const aisle = sectionOf(x.name); out.push({ id: "o:" + x.id, src: "mine", group: x.group || "other", name: x.name, sub: [], aisle, sort: (x.group || "other") === "groceries" ? AISLE_ORDER.indexOf(aisle) : 3, added: x.added }) }
+  return { items: out, soon: soon.sort((a, b) => a.end.localeCompare(b.end)), hd, sd, md };
+}
+const SKIN_STEPS = { 0: "Remove makeup", 9: "Brush teeth", 1: "Cleanser", 2: "Exfoliant", 3: "Toner & essence", 4: "Serum", 5: "Treatment", 6: "Moisturiser", 7: "Seal", 8: "Sun protection", 11: "Lips", 10: "Feet & body", 12: "Hair" };
+const SRC_LABEL = { household: "Household Diary", skin: "Skin Diary", meals: "Meal Planner", mine: "Added here" };
+
+/* ---------- ticking something off: write back to the app it came from ---------- */
+/* Each change keeps a copy of what it touched, so Undo puts it back exactly. */
+function snapshot(...keys) { const snap = keys.map(k => [k, raw(k)]); return () => { snap.forEach(([k, v]) => restore(k, v)); loadMine(); render() } }
+function tickItem(id) {
+  const [kind, ...rest] = id.split(":"), ref = rest.join(":"), g = gather(), item = g.items.find(x => x.id === id);
+  if (!item) { render(); return }
+  const touched = { h: KEYS.household, hx: KEYS.household, s: KEYS.skin, m: KEYS.meals, mx: KEYS.meals, o: null }[kind];
+  const undo = snapshot(...[touched, KEYS.mine].filter(Boolean));
+  let msg = `Ticked off ${item.name}.`;
+  if (kind === "h") msg = householdBought(ref) || msg;
+  else if (kind === "hx") { const d = readJSON(KEYS.household); delete d.shopping[ref]; writeJSON(KEYS.household, d) }
+  else if (kind === "s") msg = skinBought(ref) || msg;
+  else if (kind === "m" || kind === "mx") {
+    const d = readJSON(KEYS.meals), { key } = mealWeek(), st = (d.shop ||= {})[key] ||= { checked: {}, extra: [] };
+    if (kind === "m") (st.checked ||= {})[ref] = true; else { const x = (st.extra || []).find(x => x.id === ref); if (x) x.done = true }
+    writeJSON(KEYS.meals, d);
+  }
+  else if (kind === "o") delete mine.items[ref];
+  logBought(item.name, item.group, item.src); saveMine();
+  render(); toast(msg, undo);
+}
+/* Same as Household Diary's "bought": it learns how long a supply really lasts from when it was bought to when it ran low. */
+function householdBought(id) {
+  const d = readJSON(KEYS.household), prev = d?.supplies?.[id]; if (!prev) return;
+  const t = todayKey(), s = { ...prev, bought: t };
+  const used = prev.bought ? dayNum(prev.lowSince || t) - dayNum(prev.bought) : 0;
+  if (used >= 3) { s.used = [...(prev.used || []), used].slice(-3); s.lasts = Math.round(s.used.reduce((a, b) => a + b, 0) / s.used.length) }
+  delete s.low; delete s.lowSince; d.supplies[id] = s; writeJSON(KEYS.household, d);
+  return s.lasts ? `Bought ${s.name}. Household Diary will remind you around ${fromKey(keyAdd(t, s.lasts - 5)).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.` : `Bought ${s.name}.`;
+}
+function householdLow(id) {
+  const d = readJSON(KEYS.household), s = d?.supplies?.[id]; if (!s) return;
+  const undo = snapshot(KEYS.household);
+  d.supplies[id] = { ...s, low: true, lowSince: todayKey() }; writeJSON(KEYS.household, d);
+  render(); toast(`Added ${s.name} to the list.`, undo);
+}
+/* Same as Skin Diary's "Bought it": a restock puts the finished product back in use, anything new goes on the shelf. */
+function skinBought(id) {
+  const d = readJSON(KEYS.skin), tpl = d?.template, b = (tpl?.toBuy || []).find(x => x.id === id); if (!b) return;
+  const key = a => ((a.brand || "") + "|" + a.name).toLowerCase();
+  tpl.toBuy = tpl.toBuy.filter(x => x.id !== id);
+  const re = b.restock && tpl.products.find(x => x.id === b.restock);
+  let msg;
+  if (re) { delete re.finished; msg = `Restocked ${re.name}. It's back in use in Skin Diary.` }
+  else if (tpl.products.some(x => !x.oneOff && key(x) === key(b))) msg = `Bought ${b.name}. It's already on your shelf.`;
+  else { tpl.products.push({ id: "p_" + uid(), name: b.name, brand: b.brand, step: b.step, kinds: b.kinds || [], ...(b.icon ? { icon: b.icon } : {}) }); msg = `Bought ${b.name}. It's on your Skin Diary shelf now; add it to your routine there.` }
+  writeJSON(KEYS.skin, d); return msg;
+}
+
+/* Things typed here: food goes to this list, household and care items too, each in its group. */
+function addMine(name, group) {
+  const id = uid(); mine.items[id] = { id, name, group: group || guessGroup(name), added: Date.now() }; saveMine();
+  render(); toast(`Added ${name} to ${GROUPS[mine.items[id].group]}.`, () => { delete mine.items[id]; saveMine(); render() });
+}
+
+/* ---------- theme (shared with the other apps on this site) ---------- */
+const THEMES = ["system", "light", "dark"], THEME_KEY = "nurnhe-theme";
+const THEME_ICON = {
+  system: '<path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/><circle cx="12" cy="12" r="9"/>',
+  light: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
+  dark: '<path d="M12 3a7.5 7.5 0 0 0 7.9 12.4A9 9 0 1 1 12 3z"/>' };
+const themeNow = () => { try { const t = localStorage.getItem(THEME_KEY); return t === "auto" || !THEMES.includes(t) ? "system" : t } catch (e) { return "system" } };
+const themeLabel = t => t === "system" ? "Match my phone" : t === "light" ? "Light" : "Dark";
+function applyTheme(t = themeNow()) {
+  const root = document.documentElement;
+  if (t === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", t);
+  const b = document.getElementById("themeBtn"), next = THEMES[(THEMES.indexOf(t) + 1) % 3];
+  b.innerHTML = `<svg viewBox="0 0 24 24">${THEME_ICON[t]}</svg>`; b.title = `Colours: ${themeLabel(t)}. Tap for ${themeLabel(next)}.`; b.setAttribute("aria-label", b.title);
+  const dark = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { if (t === "system") { if (m.dataset.media) m.setAttribute("media", m.dataset.media) } else { m.dataset.media ??= m.getAttribute("media") || ""; m.removeAttribute("media"); m.content = dark ? "#1B1F22" : "#FAF6EF" } });
+}
+function setTheme(t) { try { localStorage.setItem(THEME_KEY, t === "system" ? "auto" : t) } catch (e) {} applyTheme(t) }
+
+/* ---------- icons (Tabler Icons, MIT; 24×24 outline) ---------- */
+const ICON = {
+  home: '<path d="M5 12H3l9-9 9 9h-2"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/><path d="M9 21v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6"/>',
+  drop: '<path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602-2.105 3.262-5.708 1.566-8.546l-4.89-7.26c-.42-.625-1.287-.803-1.936-.397a1.376 1.376 0 0 0-.41.397l-4.893 7.26c-1.695 2.838-1.035 6.441 1.567 8.546z"/>',
+  bowl: '<path d="M4 11h16a1 1 0 0 1 1 1v.5c0 1.5-2.517 5.573-4 6.5v1a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-1c-1.687-1.054-4-5-4-6.5V12a1 1 0 0 1 1-1z"/><path d="M12 4a2.4 2.4 0 0 0-1 2a2.4 2.4 0 0 0 1 2"/><path d="M16 4a2.4 2.4 0 0 0-1 2a2.4 2.4 0 0 0 1 2"/><path d="M8 4a2.4 2.4 0 0 0-1 2a2.4 2.4 0 0 0 1 2"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+};
+const ic = (k, cls = "") => `<svg viewBox="0 0 24 24" class="${cls}" aria-hidden="true">${ICON[k]}</svg>`;
+
+/* ---------- rendering ---------- */
+let filter = "all", sheet = null;
+const $ = s => document.querySelector(s);
+function render() {
+  const g = gather(), items = g.items, counts = Object.fromEntries(GROUP_ORDER.map(k => [k, items.filter(i => i.group === k).length]));
+  const boughtToday = mine.log.filter(x => x.on === todayKey());
+  $("#summary").innerHTML = items.length ? `<b>${items.length}</b> to buy${boughtToday.length ? ` · ${boughtToday.length} in the basket today` : ""}` : boughtToday.length ? `All done · ${boughtToday.length} bought today` : "Nothing to buy right now";
+  if (filter !== "all" && !counts[filter]) filter = "all";
+  const chips = items.length ? `<div class="chips" role="group" aria-label="Show">
+    <button class="chip" data-act="filter" data-f="all" aria-pressed="${filter === "all"}">All <span class="n">${items.length}</span></button>
+    ${GROUP_ORDER.filter(k => counts[k]).map(k => `<button class="chip" style="--c:var(--g-${k})" data-act="filter" data-f="${k}" aria-pressed="${filter === k}"><span class="dot"></span>${GROUPS[k]} <span class="n">${counts[k]}</span></button>`).join("")}</div>` : "";
+  const groups = GROUP_ORDER.filter(k => (filter === "all" || filter === k) && counts[k]).map(k => groupCard(k, items.filter(i => i.group === k))).join("");
+  const none = !g.hd && !g.sd && !g.md;
+  const empty = items.length ? "" : `<section class="card empty"><h2>${none ? "Nothing connected yet" : "You're all stocked up"}</h2>
+    <p class="muted">${none ? "This list fills itself from Household Diary, Skin Diary and Meal Planner when they're installed from the same site (nurnhe.github.io). Until then, type anything above to start a list." : "Mark something as running low in Household Diary, add a product to To buy in Skin Diary, or plan meals in Meal Planner, and it shows up here. You can also type anything above."}</p></section>`;
+  $("#main").innerHTML = chips + soonCard(g.soon) + `<div class="groups">${groups}</div>` + empty + basketCard(boughtToday) + appsStrip(g) +
+    `<p class="note">Ticking something off here also updates the app it came from.</p>`;
+}
+function groupCard(k, list) {
+  list.sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name));
+  let body;
+  if (k === "groceries") {
+    /* Groceries are split by aisle, like Meal Planner's own list. */
+    body = AISLE_ORDER.map(a => { const its = list.filter(i => (i.aisle || "other") === a); return its.length ? `<li class="aisle${a === "pantry" ? " pantry" : ""}">${esc(AISLE[a][L()])}</li>${its.map(itemRow).join("")}` : "" }).join("");
+  } else body = list.map(itemRow).join("");
+  return `<section class="card group" style="--c:var(--g-${k})"><div class="group-head"><h2>${GROUPS[k]}</h2><span class="count">${list.length}</span></div>
+    <ul class="items">${body}</ul></section>`;
+}
+function itemRow(i) {
+  const tags = i.sub.filter(([t]) => t).map(([t, cls]) => `<span class="${cls === "warn" ? "tag warn" : ""}">${esc(t)}</span>`).join("<span aria-hidden=\"true\">·</span>");
+  const from = i.src === "mine" || i.src === "meals" ? "" : `<span class="tag" style="--t:var(--g-${i.group})">${esc(SRC_LABEL[i.src])}</span>`;
+  return `<li class="item"><input type="checkbox" class="check" data-act="tick" data-id="${esc(i.id)}" aria-label="Bought ${esc(i.name)}">
+    <button class="body" data-act="open" data-id="${esc(i.id)}"><span class="nm">${esc(i.name)}</span>${tags || from ? `<span class="sub">${tags}${tags && from ? `<span aria-hidden="true">·</span>` : ""}${from}</span>` : ""}</button>
+    <span class="amt">${esc(i.amount || "")}</span></li>`;
+}
+function soonCard(soon) {
+  if (!soon.length) return "";
+  return `<section class="card soon"><div class="group-head"><h2>Running out soon</h2><span class="count">${soon.length}</span></div>
+    <ul class="items">${soon.map(s => `<li class="item"><span class="body"><span class="nm">${esc(s.name)}</span><span class="sub">${esc(s.area)} · usually runs out ${dayNum(s.end) <= dayNum(todayKey()) ? "about now" : inDays(s.end)}</span></span>
+      <button class="btn small" data-act="low" data-id="${esc(s.id)}">Add to list</button></li>`).join("")}</ul></section>`;
+}
+function basketCard(list) {
+  if (!list.length) return "";
+  return `<details class="card basket"><summary><h2>In the basket today</h2><span class="count muted">${list.length}</span></summary>
+    <ul class="items">${list.map(x => `<li class="item done"><span class="body"><span class="nm">${esc(x.name)}</span></span><span class="amt">${esc(GROUPS[x.group] || "")}</span></li>`).join("")}</ul></details>`;
+}
+function appsStrip(g) {
+  const cards = [];
+  if (g.hd) {
+    const t = todayKey(), due = Object.values(g.hd.chores).filter(c => c.due && c.due <= t && !(c.once && c.finished) && !(c.once ? c.finished === t : (c.done || []).includes(t)));
+    const lowN = Object.values(g.hd.supplies).filter(s => s.low).length;
+    cards.push(["household", "home", "Household Diary", due.length ? `${due.length} chore${due.length === 1 ? "" : "s"} due today${lowN ? `, ${lowN} supplies low` : ""}` : `No chores left today${lowN ? `, ${lowN} supplies low` : ""}`]);
+  }
+  if (g.sd) {
+    const prods = g.sd.template.products || [], swap = prods.filter(p => p.finished?.verdict === "no").length, n = (g.sd.template.toBuy || []).length;
+    cards.push(["care", "drop", "Skin Diary", swap ? `${swap} finished product${swap === 1 ? "" : "s"} to replace. Open the Shelf for swaps` : n ? `${n} on your To buy list` : "Shelf is stocked"]);
+  }
+  if (g.md) {
+    const { days } = mealWeek(), planned = days.filter(k => g.md.plan?.[k] && Object.values(g.md.plan[k]).some(Boolean)).length;
+    cards.push(["groceries", "bowl", "Meal Planner", mine.settings.meals === "next" ? `Next week: ${planned} of 7 days planned` : planned ? `${planned} day${planned === 1 ? "" : "s"} planned for the rest of this week` : "Nothing planned for the rest of this week"]);
+  }
+  if (!cards.length) return "";
+  const url = { household: APP_URL.household, care: APP_URL.skin, groceries: APP_URL.meals };
+  return `<section class="apps" aria-label="Your other apps">${cards.map(([k, icon, nm, sub]) => `<a class="card app-card" style="--c:var(--g-${k})" href="${url[k]}"><span class="ic">${ic(icon)}</span><span><span class="nm">${nm}</span><br><span class="sub">${esc(sub)}</span></span><span class="go" aria-hidden="true">›</span></a>`).join("")}</section>`;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(s) { sheet = s; clearTimeout(toastTimer); $("#toastRoot").innerHTML = ""; renderSheet() }
+function closeSheet() { sheet = null; $("#sheetRoot").innerHTML = "" }
+function renderSheet() {
+  const root = $("#sheetRoot"); if (!sheet) { root.innerHTML = ""; return }
+  let body = "";
+  if (sheet.type === "item") {
+    const i = gather().items.find(x => x.id === sheet.id); if (!i) { closeSheet(); return }
+    const open = i.src !== "mine" ? `<a class="btn" href="${APP_URL[i.src]}">Open ${SRC_LABEL[i.src]}</a>` : "";
+    const move = i.src === "mine" ? `<label class="f">Group<div class="seg">${GROUP_ORDER.map(k => `<button class="chip" style="--c:var(--g-${k})" data-act="move" data-id="${esc(i.id)}" data-g="${k}" aria-pressed="${i.group === k}"><span class="dot"></span>${GROUPS[k]}</button>`).join("")}</div></label>` : "";
+    const removeLabel = { household: "Not running low", skin: "Take off To buy", meals: "Don't need it", mine: "Remove" }[i.src];
+    body = `<span class="eyebrow">${esc(GROUPS[i.group])}${i.src !== "mine" ? " · from " + esc(SRC_LABEL[i.src]) : ""}</span><h2>${esc(i.name)}</h2>
+      ${i.sub.length || i.amount ? `<p class="muted" style="margin:0">${[i.amount, ...i.sub.map(([t]) => t)].filter(Boolean).map(esc).join(" · ")}</p>` : ""}
+      ${move}
+      <div class="row"><button class="btn ghost spacer" data-act="remove" data-id="${esc(i.id)}">${removeLabel}</button>${open}<button class="btn primary" data-act="tick-sheet" data-id="${esc(i.id)}">Bought it</button></div>`;
+  } else if (sheet.type === "settings") {
+    const s = mine.settings, has = { household: !!householdData(), skin: !!skinData(), meals: !!mealsData() };
+    const status = k => has[k] ? "" : " Not found on this device yet.";
+    body = `<h2>What goes on the list</h2>
+      <div><div class="setting"><span><span class="nm">Household Diary</span><br><span class="sub">Supplies marked running low, and things added to its shopping list.${status("household")}</span></span><input type="checkbox" class="switch" data-act="set" data-k="household"${s.household ? " checked" : ""} aria-label="Household Diary"></div>
+      <div class="setting"><span><span class="nm">Skin Diary</span><br><span class="sub">The To buy list: products to repurchase and ones you want to try.${status("skin")}</span></span><input type="checkbox" class="switch" data-act="set" data-k="skin"${s.skin ? " checked" : ""} aria-label="Skin Diary"></div>
+      <div class="setting wide"><span><span class="nm">Meal Planner</span><br><span class="sub">Groceries for the meals you planned.${status("meals")}</span></span>
+        <div class="seg">${[["rest", "This week"], ["next", "Next week"], ["off", "Off"]].map(([k, l]) => `<button class="chip" data-act="meals" data-v="${k}" aria-pressed="${s.meals === k}">${l}</button>`).join("")}</div></div></div>
+      <div class="row"><button class="btn primary" data-act="close">Done</button></div>`;
+  }
+  root.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true"><span class="grab"></span>${body}</div></div>`;
+}
+function removeItem(id) {
+  const [kind, ...rest] = id.split(":"), ref = rest.join(":"), i = gather().items.find(x => x.id === id); if (!i) return;
+  const undo = snapshot(...[{ h: KEYS.household, hx: KEYS.household, s: KEYS.skin, m: KEYS.meals, mx: KEYS.meals }[kind], KEYS.mine].filter(Boolean));
+  if (kind === "h") { const d = readJSON(KEYS.household), s = d.supplies[ref]; delete s.low; delete s.lowSince; writeJSON(KEYS.household, d) }
+  else if (kind === "hx") { const d = readJSON(KEYS.household); delete d.shopping[ref]; writeJSON(KEYS.household, d) }
+  else if (kind === "s") { const d = readJSON(KEYS.skin); d.template.toBuy = (d.template.toBuy || []).filter(x => x.id !== ref); writeJSON(KEYS.skin, d) }
+  else if (kind === "m" || kind === "mx") tickItem(id);
+  else if (kind === "o") { delete mine.items[ref]; saveMine() }
+  closeSheet();
+  if (kind !== "m" && kind !== "mx") { render(); toast(`Took ${i.name} off the list.`, undo) }
+}
+
+/* ---------- share ---------- */
+function listText() {
+  const items = gather().items;
+  return GROUP_ORDER.filter(k => items.some(i => i.group === k)).map(k => `${GROUPS[k]}:\n` + items.filter(i => i.group === k).sort((a, b) => (a.sort - b.sort) || a.name.localeCompare(b.name)).map(i => `• ${i.name}${i.amount ? " — " + i.amount : ""}`).join("\n")).join("\n\n");
+}
+async function share() {
+  const text = listText(); if (!text) { toast("The list is empty."); return }
+  if (navigator.share) { try { await navigator.share({ title: "Shopping list", text }); return } catch (e) { if (e.name === "AbortError") return } }
+  try { await navigator.clipboard.writeText(text); toast("Copied the list. Paste it into a note or message.") } catch (e) { toast("Couldn't copy the list on this device.") }
+}
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg, undo) {
+  const root = $("#toastRoot"); clearTimeout(toastTimer);
+  root.innerHTML = `<div class="toast"><span>${esc(msg)}</span>${undo ? `<button data-act="undo">Undo</button>` : ""}</div>`;
+  root.querySelector("[data-act=undo]")?.addEventListener("click", () => { root.innerHTML = ""; undo() });
+  toastTimer = setTimeout(() => root.innerHTML = "", undo ? 6000 : 3500);
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+  if (act === "scrim") { if (e.target === el) closeSheet(); return }
+  if (act === "tick") return;
+  if (act === "filter") { filter = el.dataset.f; render() }
+  else if (act === "open") openSheet({ type: "item", id });
+  else if (act === "tick-sheet") { closeSheet(); tickItem(id) }
+  else if (act === "remove") removeItem(id);
+  else if (act === "move") { const x = mine.items[id.slice(2)]; if (x) { x.group = el.dataset.g; saveMine(); render(); renderSheet() } }
+  else if (act === "low") householdLow(id);
+  else if (act === "settings") openSheet({ type: "settings" });
+  else if (act === "meals") { mine.settings.meals = el.dataset.v; saveMine(); render(); renderSheet() }
+  else if (act === "close") closeSheet();
+  else if (act === "share") share();
+  else if (act === "theme") setTheme(THEMES[(THEMES.indexOf(themeNow()) + 1) % 3]);
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset.act === "tick" && el.checked) { const li = el.closest(".item"); li?.classList.add("done"); setTimeout(() => tickItem(el.dataset.id), 220) }
+  if (el.dataset.act === "set") { mine.settings[el.dataset.k] = el.checked; saveMine(); render() }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && sheet) closeSheet() });
+const input = $("#addInput");
+input.addEventListener("input", () => { const v = input.value.trim(); $("#guess").innerHTML = v ? `<span class="dot" style="--c:var(--g-${guessGroup(v)})"></span>${GROUPS[guessGroup(v)]}` : "" });
+document.querySelector("[data-form=add]").addEventListener("submit", e => {
+  e.preventDefault(); const v = input.value.trim(); if (!v) return;
+  v.split(/\s*[,;\n]\s*/).filter(Boolean).forEach(n => addMine(cap(n)));
+  input.value = ""; $("#guess").innerHTML = "";
+});
+/* Stay in step with the other apps: re-read when one of them saves (another tab) or when coming back to this app. */
+addEventListener("storage", e => { if (e.key === THEME_KEY) applyTheme(); else if (Object.values(KEYS).includes(e.key)) { if (e.key === KEYS.mine) loadMine(); render(); if (sheet) renderSheet() } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { loadMine(); render(); if (sheet) renderSheet() } });
+addEventListener("pageshow", e => { if (e.persisted) { loadMine(); render() } });
+
+applyTheme(); loadMine(); render();
+</script>
